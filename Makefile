@@ -25,17 +25,19 @@ chess_version := 3.1.0
 #################################################################################
 # RAW FILES                                                                     #
 #################################################################################
-human_genome := data/raw/human/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
-human_stats := data/raw/human/GCF_000001405.40_GRCh38.p14_assembly_report.txt
+human_version := GCF_000001405.40_GRCh38.p14
+human_genome := data/raw/human/$(human_version)_genomic.fna.gz
+human_stats := data/raw/human/$(human_version)_assembly_report.txt
 phast_wig := $(foreach chr,$(chromosomes),data/raw/phast/$(chr).phastCons470way.wigFix.gz)
 maf_files := $(foreach chr,$(chromosomes),data/raw/maf/$(chr).maf)
 gnomad_files := $(foreach chr,$(chromosomes),data/raw/gnomad/gnomad.genomes.v4.0.sites.$(chr).vcf.bgz)
 ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),data/raw/genomes/$(genome).fa.gz)
 zoo_genomes_files := $(foreach genome,$(zoo_genomes),data/raw/genomes/$(genome).fa.gz)
 ncbi_genomes_files := $(foreach genome,$(ncbi_genomes),data/raw/genomes/$(genome).fa.gz)
+all_genomes := $(ucsc_genomes) $(zoo_genomes) $(ncbi_genomes)
 
 gencode_gtf := data/raw/annotation/gencode.v$(gencode_version).annotation.gtf.gz
-refseq_filename := GCF_000001405.40_GRCh38.p14_genomic.gtf.gz
+refseq_filename := $(human_version)_genomic.gtf.gz
 refseq_gtf := data/raw/annotation/$(refseq_filename)
 mane_gtf := data/raw/annotation/MANE.GRCh38.v$(mane_version).ensembl_genomic.gtf.gz
 chess_gtf := data/raw/annotation/chess$(chess_version).GRCh38.gtf.gz
@@ -47,20 +49,31 @@ random_gtf := data/raw/annotation/random.gtf.gz
 
 gnomad_tracks := $(foreach chr,$(chromosomes),data/interim/gnomad/$(chr).csv)
 
-gencode_introns := $(foreach chr,$(chromosomes),data/interim/gencode/$(gencode_version)/introns_all/$(chr))
-gencode_query := $(foreach chr,$(chromosomes),data/interim/gencode/$(gencode_version)/query_all/$(chr))
+gencode_dir := data/interim/gencode/$(gencode_version)
+gencode_introns := $(foreach chr,$(chromosomes),$(gencode_dir)/introns_all/$(chr))
+gencode_query := $(foreach chr,$(chromosomes),$(gencode_dir)/query_all/$(chr))
 
-refseq_introns := $(foreach chr,$(chromosomes),data/interim/refseq/$(refseq_version)/introns_all/$(chr))
-refseq_query := $(foreach chr,$(chromosomes),data/interim/refseq/$(refseq_version)/query_all/$(chr))
+refseq_dir := data/interim/refseq/$(refseq_version)
+refseq_introns := $(foreach chr,$(chromosomes),$(refseq_dir)/introns_all/$(chr))
+refseq_query := $(foreach chr,$(chromosomes),$(refseq_dir)/query_all/$(chr))
 
-mane_introns := $(foreach chr,$(chromosomes),data/interim/mane/$(mane_version)/introns_all/$(chr))
-mane_query := $(foreach chr,$(chromosomes),data/interim/mane/$(mane_version)/query_all/$(chr))
+mane_dir := data/interim/mane/$(mane_version)
+mane_introns := $(foreach chr,$(chromosomes),$(mane_dir)/introns_all/$(chr))
+mane_query := $(foreach chr,$(chromosomes),$(mane_dir)/query_all/$(chr))
 
-chess_introns := $(foreach chr,$(chromosomes),data/interim/chess/$(chess_version)/introns_all/$(chr))
-chess_query := $(foreach chr,$(chromosomes),data/interim/chess/$(mane_version)/query_all/$(chr))
+chess_dir := data/interim/chess/$(chess_version)
+chess_introns := $(foreach chr,$(chromosomes),$(chess_dir)/introns_all/$(chr))
+chess_query := $(foreach chr,$(chromosomes),$(mane_dir)/query_all/$(chr))
 
-random_introns := $(foreach chr,$(chromosomes),data/interim/random/1.0/introns_all/$(chr))
-random_query := $(foreach chr,$(chromosomes),data/interim/random/1.0/query_all/$(chr))
+random_dir := data/interim/random/1.0
+random_introns := $(foreach chr,$(chromosomes),$(random_dir)/introns_all/$(chr))
+random_query := $(foreach chr,$(chromosomes),$(random_dir)/query_all/$(chr))
+
+realignment_dir := data/interim/realignment
+unique_exons := $(foreach chr,$(chromosomes),$(realignment_dir)/unique_exons/$(chr))
+mapped_exons := $(foreach chr,$(chromosomes),$(realignment_dir)/mapped_exons/$(chr))
+alignment_jobs := $(foreach chr,$(all_genomes),$(realignment_dir)/jobs/$(genome))
+alignment_result := $(foreach chr,$(all_genomes),$(realignment_dir)/alignment/$(genome))
 
 #################################################################################
 # COMMANDS                                                                      #
@@ -68,19 +81,41 @@ random_query := $(foreach chr,$(chromosomes),data/interim/random/1.0/query_all/$
 
 #all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv
 
-all: $(random_query)
+all: $(alignemnt_jobs)
+
+clean:
+	rm -rf data/raw/annotation/*
+	rm -rf $(gencode_dir)
+	rm -rf $(chess_dir)
+	rm -rf $(mane_dir)
+	rm -rf $(refseq_dir)
+	rm -rf $(random_dir)
 
 ## Install requirements
 
 requirements:
 
+## Realign exons to other genomes
+
+$(alignemnt_jobs): $(mapped_exons)
+	$(PYTHON_INTERPRETER) src/data/map_exons.py
+
+## Map exons to other genomes
+
+$(mapped_exons): $(unique_exons) $(maf_files)
+	$(PYTHON_INTERPRETER) src/data/map_exons.py data/raw/maf/$(@F).maf $(realignment_dir)/unique_exons/$(@F) $(realignment_dir)/mapped_exons/$(@F)
+
+## Generate unique exons from all datasets:
+$(unique_exons): $(random_gtf) $(gencode_gtf) $(refseq_gtf) $(chess_gtf)
+	$(PYTHON_INTERPRETER) src/data/unique_exons.py $(gencode_dir)/exons/$(@F) $(refseq_dir)/exons/$(@F) $(chess_dir)/exons/$(@F) $(mane_dir)/exons/$(@F) $(random_dir)/exons/$(@F) > $(realignment_dir)/unique_exons/$(@F)
+
 ## Get GRCh38:
 
 $(human_stats):
-	wget --directory-prefix=data/raw/human https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_assembly_report.txt
+	wget --directory-prefix=data/raw/human https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/$(human_version)/$(human_version)_assembly_report.txt
 
 $(human_genome):
-	wget --directory-prefix=data/raw/human https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz
+	wget --directory-prefix=data/raw/human https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/$(human_version)/$(human_version)_genomic.fna.gz
 
 ## Query random dataset
 
@@ -124,7 +159,7 @@ $(refseq_introns): $(refseq_gtf)
 ## Get RefSeq:
 
 $(refseq_gtf): $(human_stats)
-	wget --directory-prefix=data/raw/annotation https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/9606/110/GCF_000001405.40_GRCh38.p14/$(refseq_filename)
+	wget --directory-prefix=data/raw/annotation https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/9606/110/$(human_version)/$(refseq_filename)
 	$(PYTHON_INTERPRETER) src/data/gtf_replace.py $(human_stats) $(refseq_gtf) data/raw/annotation/temp.gtf
 	rm $(refseq_gtf)
 	gzip data/raw/annotation/temp.gtf

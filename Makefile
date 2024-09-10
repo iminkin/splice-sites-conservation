@@ -31,9 +31,10 @@ human_stats := data/raw/human/$(human_version)_assembly_report.txt
 phast_wig := $(foreach chr,$(chromosomes),data/raw/phast/$(chr).phastCons470way.wigFix.gz)
 maf_files := $(foreach chr,$(chromosomes),data/raw/maf/$(chr).maf)
 gnomad_files := $(foreach chr,$(chromosomes),data/raw/gnomad/gnomad.genomes.v4.0.sites.$(chr).vcf.bgz)
-ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),data/raw/genomes/$(genome).fa.gz)
-zoo_genomes_files := $(foreach genome,$(zoo_genomes),data/raw/genomes/$(genome).fa.gz)
-ncbi_genomes_files := $(foreach genome,$(ncbi_genomes),data/raw/genomes/$(genome).fa.gz)
+genomes_dir := data/raw/genomes
+ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),$(genomes_dir)/$(genome).fa.gz)
+zoo_genomes_files := $(foreach genome,$(zoo_genomes),$(genomes_dir)/$(genome).fa.gz)
+ncbi_genomes_files := $(foreach genome,$(ncbi_genomes),$(genomes_dir)/$(genome).fa.gz)
 all_genomes := $(ucsc_genomes) $(zoo_genomes) $(ncbi_genomes)
 
 gencode_gtf := data/raw/annotation/gencode.v$(gencode_version).annotation.gtf.gz
@@ -63,7 +64,7 @@ mane_query := $(foreach chr,$(chromosomes),$(mane_dir)/query_all/$(chr))
 
 chess_dir := data/interim/chess/$(chess_version)
 chess_introns := $(foreach chr,$(chromosomes),$(chess_dir)/introns_all/$(chr))
-chess_query := $(foreach chr,$(chromosomes),$(mane_dir)/query_all/$(chr))
+chess_query := $(foreach chr,$(chromosomes),$(chess_dir)/query_all/$(chr))
 
 random_dir := data/interim/random/1.0
 random_introns := $(foreach chr,$(chromosomes),$(random_dir)/introns_all/$(chr))
@@ -72,19 +73,23 @@ random_query := $(foreach chr,$(chromosomes),$(random_dir)/query_all/$(chr))
 realignment_dir := data/interim/realignment
 unique_exons := $(foreach chr,$(chromosomes),$(realignment_dir)/unique_exons/$(chr))
 mapped_exons := $(foreach chr,$(chromosomes),$(realignment_dir)/mapped_exons/$(chr))
-alignment_jobs := $(foreach chr,$(all_genomes),$(realignment_dir)/jobs/$(genome))
-alignment_result := $(foreach chr,$(all_genomes),$(realignment_dir)/alignment/$(genome))
-
+alignment_jobs := $(foreach genome,$(all_genomes),$(realignment_dir)/jobs/$(genome))
+alignment_results := $(foreach genome,$(all_genomes),$(realignment_dir)/results/$(genome))
+alignment_reports := $(foreach genome,$(all_genomes),$(realignment_dir)/extra_cons/$(genome))
+identity_results := $(foreach genome,$(all_genomes),$(realignment_dir)/identity/$(genome))
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
 #all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv
 
-all: $(alignemnt_jobs)
+
+all: $(alignment_reports)
 
 clean:
 	rm -rf data/raw/annotation/*
+	rm -rf $(alignment_jobs)/*
+	rm -rf $(alignment_result)/*
 	rm -rf $(gencode_dir)
 	rm -rf $(chess_dir)
 	rm -rf $(mane_dir)
@@ -97,10 +102,17 @@ requirements:
 
 ## Realign exons to other genomes
 
-$(alignemnt_jobs): $(mapped_exons)
-	$(PYTHON_INTERPRETER) src/data/map_exons.py
+$(alignment_reports): $(alignment_results) $(identity_results)
+	$(PYTHON_INTERPRETER) src/data/parse_alignment_results.py $(human_genome) $(realignment_dir)/results/$(@F) $(realignment_dir)/identity/$(@F) $(@)
 
-## Map exons to other genomes
+$(alignment_results): $(alignment_jobs)
+	$(PYTHON_INTERPRETER) src/data/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
+
+$(identity_results): $(mapped_exons)
+	$(PYTHON_INTERPRETER) src/data/parse_identity_results.py $(realignment_dir)/mapped_exons $(@)
+
+$(alignment_jobs): $(mapped_exons)
+	$(PYTHON_INTERPRETER) src/data/generate_alignment_jobs.py $(human_genome) $(human_stats) $(mane_dir)/exons $(realignment_dir)/mapped_exons $(@)
 
 $(mapped_exons): $(unique_exons) $(maf_files)
 	$(PYTHON_INTERPRETER) src/data/map_exons.py data/raw/maf/$(@F).maf $(realignment_dir)/unique_exons/$(@F) $(realignment_dir)/mapped_exons/$(@F)

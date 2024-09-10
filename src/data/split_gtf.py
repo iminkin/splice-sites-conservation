@@ -33,6 +33,19 @@ os.mkdir(os.path.join(main_dir, "index"))
 
 transcript = dict()
 
+
+gene_type = dict()
+with gzip.open(gtf, 'rt') as handle:
+	for line in getline(handle):
+		if line.type == "gene":
+			attr = line.attr
+			if "gene_biotype" in attr:
+				gene_type[attr["gene_id"]] = attr["gene_biotype"]
+			elif "gene_type" in attr:
+				gene_type[attr["gene_id"]] = attr["gene_type"]
+
+
+pass_gene_types = ["protein_coding", "lncRNA"]
 with gzip.open(gtf, 'rt') as handle:
 	for record in getline(handle):
 		chr, type, strand = record.chr, record.type, record.strand
@@ -43,15 +56,19 @@ with gzip.open(gtf, 'rt') as handle:
 		if not os.path.isdir(ex_path):
 			os.mkdir(ex_path)
 			os.mkdir(tr_path)
-		h = None
+
+		attr = record.attr
 		if type == "transcript":
 			trid = record.attr["transcript_id"]
-			h = open(tr_path + "/" + trid, "w")
+			if ("gene_id" in attr and gene_type[attr["gene_id"]] in pass_gene_types) or ("gene_type" in attr and attr["gene_type"] in pass_gene_types):
+				h = open(tr_path + "/" + trid, "w")
+				print(record.line, file=h)
+				h.close()
 		elif type == "exon":
 			trid = record.attr["transcript_id"]
-			h = open(ex_path + "/" + trid, "a")
-		if not h is None:
-			print(record.line, file=h)
-			h.close()
+			if ("gene_id" in attr and gene_type[attr["gene_id"]] in pass_gene_types) or ("gene_type" in attr and attr["gene_type"] in pass_gene_types):
+				h = open(ex_path + "/" + trid, "a")
+				print(record.line, file=h)
+				h.close()
 
 

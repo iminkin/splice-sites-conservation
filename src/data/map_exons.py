@@ -78,7 +78,11 @@ for bidx, block in enumerate(AlignIO.parse(maf_path, "maf")):
 
 out_file = open(out_path, "w")
 for idx, line in enumerate(all_elements):
-	line = line.line + ' map "'
+	line = line.line
+	if line[-1] != ";":
+		line = line + ";"
+
+	line = line + ' map "'
 	record = []
 	for genome, coord_left in all_elements_map_left[idx].items():
 		coord_right = all_elements_map_right[idx][genome]

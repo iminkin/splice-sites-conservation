@@ -58,13 +58,21 @@ def parse_report(hg38, report_path, threshold, out_file):
 	for chr, val in cons.items():
 		print(" ".join([chr] + [str(x) for x in val]), file=out_file)
 
+mol = dict()
+for line in open(sys.argv[2]):
+	line = line.strip()
+	if line[0] != '#':
+		line = line.split('\t')
+		if line[-1] != "na":
+			mol[line[6]] = line[-1]
+
 prefix = 30
 hg38 = dict()
 for record in SeqIO.parse(gzip.open(sys.argv[1], "rt"), "fasta"):
-	hg38[record.id] = Seq(record.seq.upper())
+	hg38[mol[record.id]] = Seq(record.seq.upper())
 
-id_file = open(sys.argv[2])
+id_file = open(sys.argv[4])
 identity = id_file.readline().strip().split()
 avg, std = float(identity[0]), float(identity[1])
-out_file = open(sys.argv[4], "w")
+out_file = open(sys.argv[5], "w")
 parse_report(hg38, sys.argv[3], avg - std, out_file)

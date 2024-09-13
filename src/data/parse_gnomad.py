@@ -26,6 +26,10 @@ src_vcf = os.path.join(source_dir, src_vcf)
 
 out_handle = open(target, "w")
 print("pos,AF", file=out_handle)
+
+#if not os.isfile(src_vcf):
+#	exit()
+
 with gzip.open(src_vcf, "rt") as handle:
 	for line in handle:
 		line = parse_vcf_line(line.strip())

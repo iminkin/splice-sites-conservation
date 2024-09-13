@@ -73,8 +73,8 @@ for bidx, block in enumerate(AlignIO.parse(maf_path, "maf")):
 		for i in range(0, len(block)):
 			if block[i].seq[j] != '-':
 				pos[i] += inc[i]
-	if match_cnt > 1000:
-		break
+#	if match_cnt > 1000:
+#		break
 
 out_file = open(out_path, "w")
 for idx, line in enumerate(all_elements):

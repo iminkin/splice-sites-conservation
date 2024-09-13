@@ -8,7 +8,8 @@ CONFIGURATION = debug
 
 
 ifeq ($(CONFIGURATION),debug)
-chromosomes := chr21 chr22
+complete_chromosomes := chr21 chr22
+chromosomes := chr17_KI270909v1_alt chr19_KI270916v1_alt chr19_KI270890v1_alt chr22_KI270879v1_alt
 rand_limit := 20000
 ucsc_genomes := panTro6 panPan3
 zoo_genomes := HLmacFus1 HLallNig1
@@ -21,6 +22,7 @@ gencode_version := 45
 refseq_version := 110
 mane_version := 1.3
 chess_version := 3.1.0
+random_version := 1.0
 
 #################################################################################
 # RAW FILES                                                                     #
@@ -30,7 +32,9 @@ human_genome := data/raw/human/$(human_version)_genomic.fna.gz
 human_stats := data/raw/human/$(human_version)_assembly_report.txt
 phast_wig := $(foreach chr,$(chromosomes),data/raw/phast/$(chr).phastCons470way.wigFix.gz)
 maf_files := $(foreach chr,$(chromosomes),data/raw/maf/$(chr).maf)
-gnomad_files := $(foreach chr,$(chromosomes),data/raw/gnomad/gnomad.genomes.v4.0.sites.$(chr).vcf.bgz)
+
+gnomad_files := $(foreach chr,$(complete_chromosomes),data/raw/gnomad/gnomad.genomes.v4.0.sites.$(chr).vcf.bgz)
+
 genomes_dir := data/raw/genomes
 ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),$(genomes_dir)/$(genome).fa.gz)
 zoo_genomes_files := $(foreach genome,$(zoo_genomes),$(genomes_dir)/$(genome).fa.gz)
@@ -48,7 +52,8 @@ random_gtf := data/raw/annotation/random.gtf.gz
 # INTERIM FILES                                                                 #
 #################################################################################
 
-gnomad_tracks := $(foreach chr,$(chromosomes),data/interim/gnomad/$(chr).csv)
+clinvar_tracks := data/interim/clinvar/clinvar.csv
+gnomad_tracks := $(foreach chr,$(complete_chromosomes),data/interim/gnomad/$(chr).csv)
 
 gencode_dir := data/interim/gencode/$(gencode_version)
 gencode_introns := $(foreach chr,$(chromosomes),$(gencode_dir)/introns_all/$(chr))
@@ -77,6 +82,18 @@ alignment_jobs := $(foreach genome,$(all_genomes),$(realignment_dir)/jobs/$(geno
 alignment_results := $(foreach genome,$(all_genomes),$(realignment_dir)/results/$(genome))
 alignment_reports := $(foreach genome,$(all_genomes),$(realignment_dir)/extra_cons/$(genome))
 identity_results := $(foreach genome,$(all_genomes),$(realignment_dir)/identity/$(genome))
+
+#################################################################################
+# FEATURES                                                                      #
+#################################################################################
+
+all_csv := data/processed/splice_sites.csv
+mane_csv := data/processed/mane/$(mane_version).csv
+gencode_csv := data/processed/gencode/$(gencode_version).csv
+refseq_csv := data/processed/refseq/$(refseq_version).csv
+chess_csv := data/processed/chess/$(chess_version).csv
+random_csv := data/processed/random/$(random_version).csv
+
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
@@ -84,26 +101,57 @@ identity_results := $(foreach genome,$(all_genomes),$(realignment_dir)/identity/
 #all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv
 
 
-all: $(alignment_reports)
+#all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv $(alignment_reports)
+
+all: $(all_csv)
 
 clean:
 	rm -rf data/raw/annotation/*
-	rm -rf $(alignment_jobs)/*
-	rm -rf $(alignment_result)/*
+	rm -rf $(realignment_dir)/unique_exons/*
+	rm -rf $(realignment_dir)/mapped_exons/*
+	rm -rf $(realignment_dir)/jobs/*
+	rm -rf $(realignment_dir)/alignment_reports/*
+	rm -rf $(realignment_dir)/results/*
+	rm -rf $(realignment_dir)/extra_cons/*
 	rm -rf $(gencode_dir)
 	rm -rf $(chess_dir)
 	rm -rf $(mane_dir)
 	rm -rf $(refseq_dir)
 	rm -rf $(random_dir)
+	rm $(mane_csv)
+	rm $(gencode_csv)
+	rm $(refseq_csv)
+	rm $(chess_csv)
+	rm $(random_csv)
 
 ## Install requirements
 
 requirements:
 
+## Generate feature tables
+
+$(all_csv): $(mane_csv) $(gencode_csv) $(refseq_csv) $(chess_csv) $(random_csv)
+
+$(mane_csv): $(mane_gtf) $(mane_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(mane_gtf) MANE $(mane_dir)/introns $(mane_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" > $(mane_csv)
+
+$(gencode_csv): $(gencode_gtf) $(gencode_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(gencode_gtf) GENCODE $(gencode_dir)/introns $(gencode_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" > $(gencode_csv)
+
+$(refseq_csv): $(refseq_gtf) $(refseq_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(refseq_gtf) RefSeq $(refseq_dir)/introns $(refseq_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" > $(refseq_csv)
+
+$(chess_csv): $(chess_gtf) $(chess_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(chess_gtf) CHESS $(chess_dir)/introns $(chess_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" > $(chess_csv)
+
+$(random_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(random_gtf) Random $(random_dir)/introns $(random_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" > $(random_csv)
+
+
 ## Realign exons to other genomes
 
 $(alignment_reports): $(alignment_results) $(identity_results)
-	$(PYTHON_INTERPRETER) src/data/parse_alignment_results.py $(human_genome) $(realignment_dir)/results/$(@F) $(realignment_dir)/identity/$(@F) $(@)
+	$(PYTHON_INTERPRETER) src/data/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/$(@F) $(realignment_dir)/identity/$(@F) $(@)
 
 $(alignment_results): $(alignment_jobs)
 	$(PYTHON_INTERPRETER) src/data/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
@@ -211,8 +259,8 @@ $(chess_gtf):
 
 ## Get and parse the clinvar data
 
-data/interim/clinvar/clinvar.csv: data/raw/clinvar/clinvar.vcf.gz $(human_stats)
-	$(PYTHON_INTERPRETER) src/data/parse_clinvar.py src/data/clinvar_pathogenic.txt $(human_stats) data/raw/clinvar/clinvar.vcf.gz data/interim/clinvar/clinvar.csv
+$(clinvar_tracks): data/raw/clinvar/clinvar.vcf.gz $(human_stats)
+	$(PYTHON_INTERPRETER) src/data/parse_clinvar.py src/data/clinvar_pathogenic.txt $(human_stats) data/raw/clinvar/clinvar.vcf.gz $(clinvar_trracks)
 
 data/raw/clinvar/clinvar.vcf.gz:
 	wget --directory-prefix=data/raw/clinvar https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz
@@ -228,7 +276,7 @@ $(gnomad_tracks): $(gnomad_files)
 	$(PYTHON_INTERPRETER) src/data/parse_gnomad.py data/raw/gnomad $@
 
 $(gnomad_files):
-	wget --directory-prefix=data/raw/gnomad https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.0/vcf/genomes/$(@F)
+	wget --content-on-error --directory-prefix=data/raw/gnomad https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.0/vcf/genomes/$(@F)
 
 ## Get the phastCons data
 

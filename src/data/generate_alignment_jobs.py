@@ -104,8 +104,6 @@ def generate_jobs(mane_path, query_path, seq, prefix, genome, jobs_file):
 							print(cutline(right_line.line), file=handle)
 							print(left_ortholog_coord.chr, left_ortholog_coord.pos, left_ortholog_coord.strand, right_ortholog_coord.pos, right_ortholog_coord.strand, file=handle)
 							print("", file=handle)
-							handle.close()
-
 
 mol = dict()
 for line in open(sys.argv[2]):

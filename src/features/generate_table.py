@@ -40,7 +40,7 @@ def parse_variants(path, chr):
 				variants[chr][idx] = af
 	return variants
 
-def get_type(dataset, gtf):
+def get_type(dataset, gtf, chr):
 	gene_type = dict()
 	trid_to_geneid = dict()
 	transcript_type = dict()
@@ -51,6 +51,9 @@ def get_type(dataset, gtf):
 		type_attr = "gene_type"
 
 	for rec in getline(gzip.open(sys.argv[1], "rt")):
+		if rec.chr != chr:
+			continue
+
 		if rec.type == "gene":
 			gene_id = rec.attr["gene_id"]
 			gene_type[gene_id] = rec.attr[type_attr]
@@ -92,36 +95,36 @@ def get_coords_set(path):
 	return coords_set
 
 
-def get_coords(introns_dir):
+def get_coords(introns_dir, chr):
 	site_coords = dict()
 	coords_use_rate = {"a" : dict(), "d" : dict()}
-	for root, dirs, files in os.walk(introns_dir):
-		for trid in files:
-			intron_idx = 0
-			h = open(os.path.join(root, trid))
-			for rec in getline(h):
-				donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
+	root = os.path.join(introns_dir, chr)
+	for trid in os.listdir(root):
+		intron_idx = 0
+		h = open(os.path.join(root, trid))
+		for rec in getline(h):
+			donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
+			if not donor_coords in coords_use_rate["d"]:
+				coords_use_rate["d"][donor_coords] = 0
+			coords_use_rate["d"][donor_coords] += 1
 
-				if not donor_coords in coords_use_rate["d"]:
-					coords_use_rate["d"][donor_coords] = 0
-				coords_use_rate["d"][donor_coords] += 1
+			if not acceptor_coords in coords_use_rate["a"]:
+				coords_use_rate["a"][acceptor_coords] = 0
+			coords_use_rate["a"][acceptor_coords] += 1
 
-				if not acceptor_coords in coords_use_rate["a"]:
-					coords_use_rate["a"][acceptor_coords] = 0
-				coords_use_rate["a"][acceptor_coords] += 1
-
-				site_coords[pack_header(trid, str(intron_idx), "d")] = donor_coords
-				site_coords[pack_header(trid, str(intron_idx), "a")] = acceptor_coords
-				intron_idx += 1
+			site_coords[pack_header(trid, str(intron_idx), "d")] = donor_coords
+			site_coords[pack_header(trid, str(intron_idx), "a")] = acceptor_coords
+			intron_idx += 1
 	return (site_coords, coords_use_rate)
 
-def get_extra_cons(extra_dir):
+def get_extra_cons(extra_dir, chr_dir):
 	cons = dict()
 	for genome in os.listdir(extra_dir):
 		cons[genome] = dict()
 		for line in open(os.path.join(extra_dir, genome)):
 			line = line.strip().split()
-			cons[genome][line[0]] = set([int(p) for p in line[1:]])
+			if line[0] == chr_dir:
+				cons[genome][line[0]] = set([int(p) for p in line[1:]])
 	return cons
 
 def parse_phast(phast_base, chr):
@@ -165,10 +168,6 @@ clinvar_file = sys.argv[7]
 extra_cons_dir = sys.argv[8]
 phast_dir = sys.argv[9]
 all_genomes = set(sys.argv[10].split())
-
-extra_cons = get_extra_cons(extra_cons_dir)
-gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf)
-site_coords, coords_use_rate = get_coords(introns_dir)
 clinvar = parse_clinvar(clinvar_file)
 
 limit = 180000 if dataset == "Random" else sys.maxsize
@@ -180,6 +179,10 @@ printed = set()
 
 all_transcripts = dict()
 for chr_dir in os.listdir(query_dir):
+	extra_cons = get_extra_cons(extra_cons_dir, chr_dir)
+	gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf, chr_dir)
+	site_coords, coords_use_rate = get_coords(introns_dir, chr_dir)
+
 	site_seen = {"a" : dict(), "d" : dict()}
 	chr_path = os.path.join(query_dir, chr_dir)
 	phast = parse_phast(phast_dir, chr_dir)

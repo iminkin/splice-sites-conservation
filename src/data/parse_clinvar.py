@@ -21,7 +21,7 @@ pathogenic = set()
 for sig in open(sys.argv[1]):
 	pathogenic.add(sig.strip())
 
-print(pathogenic)
+#print(pathogenic)
 
 chrom = dict()
 for line in open(sys.argv[2]):

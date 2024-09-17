@@ -41,11 +41,11 @@ for rec in getline(open(sys.argv[1])):
 
 		multiple_alignment = idx.get_spliced([start_center - shift], [start_center + shift + 2], +1)
 		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "d")
-		AlignIO.write(multiple_alignment, out_handle, "fasta")
+		SeqIO.write(multiple_alignment, out_handle, "fasta")
 
 		multiple_alignment = idx.get_spliced([end_center - shift], [end_center + shift + 2], +1)
 		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "a")
-		AlignIO.write(multiple_alignment, out_handle, "fasta")
+		SeqIO.write(multiple_alignment, out_handle, "fasta")
 	else:
 		start_center = end - 2
 		end_center = start

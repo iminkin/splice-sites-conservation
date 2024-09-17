@@ -57,7 +57,7 @@ random_gtf := data/raw/annotation/random.gtf.gz
 #################################################################################
 
 clinvar_tracks := data/interim/clinvar/clinvar.csv
-gnomad_tracks := $(foreach chr,$(chromosomes),data/interim/gnomad/$(chr).csv)
+gnomad_tracks := $(foreach chr,$(complete_chromosomes),data/interim/gnomad/$(chr).csv)
 
 gencode_dir := data/interim/gencode
 gencode_exons := $(foreach chr,$(chromosomes),$(gencode_dir)/exons/$(chr))
@@ -107,24 +107,13 @@ random_csv := data/processed/random/$(random_version).csv
 # COMMANDS                                                                      #
 #################################################################################
 
-#all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv
 
-
-#all: requirements $(maf_files) $(gnomad_tracks) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files) $(gencode_query) $(refseq_query) $(mane_query) $(chess_query) $(random_query) data/interim/clinvar/clinvar.csv $(alignment_reports)
-
-
-all: $(mane_csv)
+all: $(model_csv)
 
 clean:
-	rm -rf data/raw/annotation/*
-	rm -rf $(realignment_dir)/unique_exons/* $(realignment_dir)/mapped_exons/*  $(realignment_dir)/jobs/*  $(realignment_dir)/identity/*  $(realignment_dir)/alignment_reports/*  $(realignment_dir)/results/*  $(realignment_dir)/extra_cons/*
-	rm -rf $(gencode_dir)/introns/* $(gencode_dir)/exons/*  $(gencode_dir)/index/* $(gencode_dir)/query/*
-	rm -rf $(chess_dir)/introns/*  $(chess_dir)/exons/* $(chess_dir)/index/*  $(chess_dir)/query/*
-	rm -rf $(mane_dir)/introns/* $(mane_dir)/exons/*  $(mane_dir)/index/*  $(mane_dir)/query/*
-	rm -rf $(refseq_dir)/introns/* $(refseq_dir)/exons/*  $(refseq_dir)/index/*  $(refseq_dir)/query/*
-	rm -rf $(random_dir)/introns/* $(random_dir)/exons/* $(random_dir)/query/*  $(random_dir)/index/*
-	rm -f $(mane_csv) $(gencode_csv) $(refseq_csv) $(chess_csv) $(random_csv) $(all_csv) $(model_csv)
-	rm -f data/processed/roc/*
+	find ./data/interim -type f -not -name '.gitkeep' -delete
+	find ./data/processed -type f -not -name '.gitkeep' -delete
+#	find ./data/raw -type f -not -name '.gitkeep' -delete
 
 ## Install requirements
 
@@ -161,7 +150,7 @@ $(random_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnomad_track
 $(alignment_reports): $(alignment_results) $(identity_results)
 	$(PYTHON_INTERPRETER) src/data/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/$(@F) $(realignment_dir)/identity/$(@F) $(@)
 
-$(alignment_results): $(alignment_jobs) $(all_genomes)
+$(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
 	$(PYTHON_INTERPRETER) src/data/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
 
 $(identity_results): $(mapped_exons)
@@ -272,7 +261,7 @@ $(chess_gtf):
 ## Get and parse the clinvar data
 
 $(clinvar_tracks): data/raw/clinvar/clinvar.vcf.gz $(human_stats)
-	$(PYTHON_INTERPRETER) src/data/parse_clinvar.py src/data/clinvar_pathogenic.txt $(human_stats) data/raw/clinvar/clinvar.vcf.gz $(clinvar_trracks)
+	$(PYTHON_INTERPRETER) src/data/parse_clinvar.py src/data/clinvar_pathogenic.txt $(human_stats) data/raw/clinvar/clinvar.vcf.gz $(clinvar_tracks)
 
 data/raw/clinvar/clinvar.vcf.gz:
 	wget --directory-prefix=data/raw/clinvar https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz

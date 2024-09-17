@@ -4,6 +4,7 @@ import math
 import gzip
 
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 sys.path.append("src/lib")
 from gtf_parse import getline
@@ -168,6 +169,8 @@ clinvar_file = sys.argv[7]
 extra_cons_dir = sys.argv[8]
 phast_dir = sys.argv[9]
 all_genomes = set(sys.argv[10].split())
+chromosomes = sys.argv[11].split()
+
 clinvar = parse_clinvar(clinvar_file)
 
 limit = 180000 if dataset == "Random" else sys.maxsize
@@ -177,25 +180,43 @@ all_header = "dataset,transcript_id,intron_index,site_type,gene_type,inMANE,chr,
 print(all_header)
 printed = set()
 
-all_transcripts = dict()
-for chr_dir in os.listdir(query_dir):
-	extra_cons = get_extra_cons(extra_cons_dir, chr_dir)
-	gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf, chr_dir)
-	site_coords, coords_use_rate = get_coords(introns_dir, chr_dir)
+def parse_query_batch(handle):
+	prev = ""
+	batch = []
+	for record in SeqIO.parse(handle):
+		head = record.id.split("#")
+		if head[0] != prev and batch != []:
+			ret = prev.split("$")
+			yield(ret[0], ret[1], ret[2], batch)
+			batch = []
+			prev = head[0]
+		prev = head[0]
+		batch.append(SeqRecord(Seq(record.seq), id=head[1], description=""))
+	ret = prev.split("$")
+	yield(ret[0], ret[1], ret[2], batch)
 
+all_transcripts = dict()
+for chr in chromosomes:
+	phast = parse_phast(phast_dir, chr)
+	variants = parse_variants(snp_base, chr)
+	extra_cons = get_extra_cons(extra_cons_dir, chr)
+	mane_coords = get_coords_set(os.path.join(mane_introns, chr))
+	gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf, chr)
+	site_coords, coords_use_rate = get_coords(introns_dir, chr)
 	site_seen = {"a" : dict(), "d" : dict()}
-	chr_path = os.path.join(query_dir, chr_dir)
-	phast = parse_phast(phast_dir, chr_dir)
-	variants = parse_variants(snp_base, chr_dir)
-	mane_coords = get_coords_set(os.path.join(mane_introns, chr_dir))
-	for site_id in os.listdir(chr_path):
+
+	query_path = os.path.join(query_dir, chr)
+	if not os.path.isfile(query_path):
+		continue
+
+	for (trid, site_idx, suffix, seq_batch) in parse_query_batch(open(query_path)):
 		rec = dict()
 		score = dict()
-		trid, site_idx, suffix = unpack_header(site_id)
 		type = transcript_type[trid]
 		if type != "lncRNA" and type != "protein_coding":
 			continue
-#		print(trid, file=sys.stderr)
+
+		print(trid, site_idx, suffix, seq_batch, file=sys.stderr)
 		coords = site_coords[site_id]
 		if coords in site_seen[suffix]:
 			site_signature, site_usage = site_seen[suffix][coords]
@@ -211,9 +232,7 @@ for chr_dir in os.listdir(query_dir):
 		chr, strand, now_pos = coords.split("&")
 		now_pos = int(now_pos)
 
-		for record in SeqIO.parse(os.path.join(chr_path, site_id), "fasta"):
-			genome = record.id.split(".")[0]
-			seq = record.seq.upper()
+		for (genome, seq) in seq_batch:
 			rec[genome] = seq
 
 		idx = 0

@@ -2,28 +2,32 @@ import os
 import sys
 from Bio import AlignIO
 from Bio.AlignIO import MafIO
+from Bio import SeqIO
+from Bio import AlignIO
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 
-dir = sys.argv[1]
+introns = sys.argv[1]
 maf = sys.argv[2]
-chr = sys.argv[3]
+index_path = sys.argv[3]
+chr = sys.argv[4]
+out = sys.argv[5]
 
-index_path = os.path.join(dir, "index", chr)
+if os.path.isfile(index_path):
+	os.remove(index_path)
+
 idx = MafIO.MafIndex(index_path, maf, "hg38." + chr)
 shift = 30
+
+def to_seq(a, trid, idx, type):
+	return [SeqRecord(Seq(r.seq), id="{}${}${}#{}".format(trid, idx, type, r.id), description="") for r in a]
 
 sys.path.append("src/lib")
 from gtf_parse import getline
 
-query_dir = os.path.join(dir, "query", chr)
-try:
-    	shutil.rmtree(query_dir)
-except:
-       	pass
-
-os.mkdir(query_dir)
-
+out_handle = open(out, "w")
 prev_tr = ""
-for rec in getline(open(os.path.join(dir, "introns_all", chr))):
+for rec in getline(open(sys.argv[1])):
 	tr = rec.attr["transcript_id"]
 	if tr != prev_tr:
 		intron_idx = 0
@@ -36,17 +40,24 @@ for rec in getline(open(os.path.join(dir, "introns_all", chr))):
 		end_center = end - 2
 
 		multiple_alignment = idx.get_spliced([start_center - shift], [start_center + shift + 2], +1)
-		AlignIO.write(multiple_alignment, "$".join((query_dir + "/" + tr, str(intron_idx), "d")), "fasta")
+		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "d")
+		AlignIO.write(multiple_alignment, out_handle, "fasta")
+
 		multiple_alignment = idx.get_spliced([end_center - shift], [end_center + shift + 2], +1)
-		AlignIO.write(multiple_alignment, "$".join((query_dir + "/" + tr, str(intron_idx), "a")), "fasta")
+		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "a")
+		AlignIO.write(multiple_alignment, out_handle, "fasta")
 	else:
 		start_center = end - 2
 		end_center = start
 
 		multiple_alignment = idx.get_spliced([start_center - shift], [start_center + shift + 2], -1)
-		AlignIO.write(multiple_alignment, "$".join((query_dir + "/" + tr, str(intron_idx), "d")), "fasta")
+		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "d")
+		SeqIO.write(multiple_alignment, out_handle, "fasta")
+
 		multiple_alignment = idx.get_spliced([end_center - shift], [end_center + shift + 2], -1)
-		AlignIO.write(multiple_alignment, "$".join((query_dir + "/" + tr, str(intron_idx), "a")), "fasta")
+		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "d")
+		SeqIO.write(multiple_alignment, out_handle, "fasta")
+
 	intron_idx += 1
 
 os.remove(index_path)

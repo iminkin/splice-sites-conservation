@@ -23,6 +23,10 @@ for chr in os.listdir(exons_dir):
 					result.append(now_id)
 
 handle = open(out_file, "w")
-avg = sum(result) / len(result)
-stdev = statistics.stdev(result)
+if len(result) > 0:
+	avg = sum(result) / len(result)
+	stdev = statistics.stdev(result)
+else:
+	avg = stdev = 0
+
 print(avg, stdev, file=handle)

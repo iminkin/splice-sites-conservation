@@ -8,9 +8,8 @@ CONFIGURATION = debug
 
 ifeq ($(CONFIGURATION),debug)
 rand_limit := 20000
-chromosomes := chr19_KI270882v1_alt chr19_KI270916v1_alt
-#chromosomes := chr21 chr22
-#complete_chromosomes := chr21 chr22
+chromosomes := chr19_KI270882v1_alt chr19_KI270916v1_alt chr19 chr20 chr21 chr22
+complete_chromosomes := chr19 chr20 chr21 chr22
 ucsc_genomes := panTro6 panPan3
 zoo_genomes := HLmacFus1 HLallNig1
 ncbi_genomes := HLhylMol2 HLsemEnt1
@@ -130,19 +129,19 @@ $(all_csv): $(mane_csv) $(gencode_csv) $(refseq_csv) $(chess_csv) $(random_csv)
 	$(PYTHON_INTERPRETER) src/features/merge.py $(mane_csv) $(gencode_csv) $(refseq_csv) $(chess_csv) $(random_csv) $(all_csv)
 
 $(mane_csv): $(mane_gtf) $(mane_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
-	$(PYTHON_INTERPRETER) src/features/generate_table.py $(mane_gtf) MANE $(mane_dir)/introns $(mane_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" > $(mane_csv)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(mane_gtf) MANE $(mane_dir)/introns $(mane_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" $(human_genome) $(human_stats) > $(mane_csv)
 
 $(gencode_csv): $(gencode_gtf) $(gencode_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
-	$(PYTHON_INTERPRETER) src/features/generate_table.py $(gencode_gtf) GENCODE $(gencode_dir)/introns $(gencode_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" > $(gencode_csv)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(gencode_gtf) GENCODE $(gencode_dir)/introns $(gencode_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" $(human_genome) $(human_stats) > $(gencode_csv)
 
 $(refseq_csv): $(refseq_gtf) $(refseq_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
-	$(PYTHON_INTERPRETER) src/features/generate_table.py $(refseq_gtf) RefSeq $(refseq_dir)/introns $(refseq_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" > $(refseq_csv)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(refseq_gtf) RefSeq $(refseq_dir)/introns $(refseq_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" $(human_genome) $(human_stats) > $(refseq_csv)
 
 $(chess_csv): $(chess_gtf) $(chess_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
-	$(PYTHON_INTERPRETER) src/features/generate_table.py $(chess_gtf) CHESS $(chess_dir)/introns $(chess_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" > $(chess_csv)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(chess_gtf) CHESS $(chess_dir)/introns $(chess_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" $(human_genome) $(human_stats) > $(chess_csv)
 
 $(random_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnomad_tracks) $(clinvar_tracks) $(phast_wig)
-	$(PYTHON_INTERPRETER) src/features/generate_table.py $(random_gtf) Random $(random_dir)/introns $(random_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" > $(random_csv)
+	$(PYTHON_INTERPRETER) src/features/generate_table.py $(random_gtf) Random $(random_dir)/introns $(random_dir)/query $(mane_dir)/introns data/interim/gnomad/ $(clinvar_tracks) $(realignment_dir)/extra_cons data/raw/phast  "$(all_genomes)" "$(chromosomes)" $(human_genome) $(human_stats) > $(random_csv)
 
 
 ## Realign exons to other genomes
@@ -156,7 +155,7 @@ $(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_file
 $(identity_results): $(mapped_exons)
 	$(PYTHON_INTERPRETER) src/data/parse_identity_results.py $(realignment_dir)/mapped_exons $(@)
 
-$(alignment_jobs): $(mapped_exons)
+$(alignment_jobs): $(mapped_exons) $(human_genome) $(human_stats) $(mane_exons)
 	$(PYTHON_INTERPRETER) src/data/generate_alignment_jobs.py $(human_genome) $(human_stats) $(mane_dir)/exons $(realignment_dir)/mapped_exons $(@)
 
 $(mapped_exons): $(unique_exons) $(maf_files)

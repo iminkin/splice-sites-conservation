@@ -41,7 +41,7 @@ def parse_variants(path, chr):
 				variants[chr][idx] = af
 	return variants
 
-def get_type(dataset, gtf, chr):
+def get_type(dataset, gtf):
 	gene_type = dict()
 	trid_to_geneid = dict()
 	transcript_type = dict()
@@ -52,8 +52,8 @@ def get_type(dataset, gtf, chr):
 		type_attr = "gene_type"
 
 	for rec in getline(gzip.open(sys.argv[1], "rt")):
-		if rec.chr != chr:
-			continue
+#		if rec.chr != chr:
+#			continue
 
 		if rec.type == "gene":
 			gene_id = rec.attr["gene_id"]
@@ -87,35 +87,34 @@ def unpack_header(header):
 
 def get_coords_set(path):
 	coords_set = {"a" : set(), "d" : set()}
-	for root, dirs, files in os.walk(path):
-		for trid in files:
-			for rec in getline(open(os.path.join(root, trid))):
-				donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
-				coords_set["d"].add(donor_coords)
-				coords_set["a"].add(acceptor_coords)
+	for rec in getline(open(path)):
+		donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
+		coords_set["d"].add(donor_coords)
+		coords_set["a"].add(acceptor_coords)
 	return coords_set
 
-
-def get_coords(introns_dir, chr):
+def get_coords(introns_file):
 	site_coords = dict()
 	coords_use_rate = {"a" : dict(), "d" : dict()}
 	root = os.path.join(introns_dir, chr)
-	for trid in os.listdir(root):
-		intron_idx = 0
-		h = open(os.path.join(root, trid))
-		for rec in getline(h):
-			donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
-			if not donor_coords in coords_use_rate["d"]:
-				coords_use_rate["d"][donor_coords] = 0
-			coords_use_rate["d"][donor_coords] += 1
+	prev_trid = ""
+	intron_idx = 0
+	for rec in getline(open(introns_file)):
+		trid = rec.attr["transcript_id"]
+		if trid != prev_trid:
+			intron_idx = 0
+			prev_trid = trid
+		donor_coords, acceptor_coords = donor_acceptor(rec.chr, rec.strand, rec.start, rec.end)
+		if not donor_coords in coords_use_rate["d"]:
+			coords_use_rate["d"][donor_coords] = 0
+		coords_use_rate["d"][donor_coords] += 1
 
-			if not acceptor_coords in coords_use_rate["a"]:
-				coords_use_rate["a"][acceptor_coords] = 0
-			coords_use_rate["a"][acceptor_coords] += 1
-
-			site_coords[pack_header(trid, str(intron_idx), "d")] = donor_coords
-			site_coords[pack_header(trid, str(intron_idx), "a")] = acceptor_coords
-			intron_idx += 1
+		if not acceptor_coords in coords_use_rate["a"]:
+			coords_use_rate["a"][acceptor_coords] = 0
+		coords_use_rate["a"][acceptor_coords] += 1
+		site_coords[pack_header(trid, str(intron_idx), "d")] = donor_coords
+		site_coords[pack_header(trid, str(intron_idx), "a")] = acceptor_coords
+		intron_idx += 1
 	return (site_coords, coords_use_rate)
 
 def get_extra_cons(extra_dir, chr_dir):
@@ -154,10 +153,19 @@ def parse_clinvar(clinvar):
 		ret[chr].add(pos)
 	return ret
 
+mol = dict()
+for line in open(sys.argv[13]):
+	line = line.strip()
+	if line[0] != '#':
+		line = line.split('\t')
+		if line[-1] != "na":
+			mol[line[6]] = line[-1]
 
-#hg38 = dict()
-#for record in SeqIO.parse("/home/iminkin2/projects3/splice-sites-paper-final/data/hg38/hg38.fa", "fasta"):
-#	hg38[record.id] = Seq(record.seq.upper())
+hg38 = dict()
+hg38_handle = gzip.open(sys.argv[12], mode='rt')
+for record in SeqIO.parse(hg38_handle, "fasta"):
+	record_id = mol[record.id]
+	hg38[record_id] = record.seq.upper()
 
 gtf = sys.argv[1]
 dataset = sys.argv[2]
@@ -183,7 +191,7 @@ printed = set()
 def parse_query_batch(handle):
 	prev = ""
 	batch = []
-	for record in SeqIO.parse(handle):
+	for record in SeqIO.parse(handle, "fasta"):
 		head = record.id.split("#")
 		if head[0] != prev and batch != []:
 			ret = prev.split("$")
@@ -191,18 +199,22 @@ def parse_query_batch(handle):
 			batch = []
 			prev = head[0]
 		prev = head[0]
-		batch.append(SeqRecord(Seq(record.seq), id=head[1], description=""))
+		genome = head[1].split(".")[0]
+		batch.append((genome, SeqRecord(Seq(record.seq), id=head[1], description=""), record))
 	ret = prev.split("$")
-	yield(ret[0], ret[1], ret[2], batch)
+	if len(ret) == 3:
+		yield(ret[0], ret[1], ret[2], batch)
+	yield ("", "", "", [])
 
+gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf)
 all_transcripts = dict()
 for chr in chromosomes:
 	phast = parse_phast(phast_dir, chr)
 	variants = parse_variants(snp_base, chr)
 	extra_cons = get_extra_cons(extra_cons_dir, chr)
+
 	mane_coords = get_coords_set(os.path.join(mane_introns, chr))
-	gene_type, trid_to_geneid, transcript_type, transcripts_per_gene = get_type(dataset, gtf, chr)
-	site_coords, coords_use_rate = get_coords(introns_dir, chr)
+	site_coords, coords_use_rate = get_coords(os.path.join(introns_dir, chr))
 	site_seen = {"a" : dict(), "d" : dict()}
 
 	query_path = os.path.join(query_dir, chr)
@@ -210,13 +222,16 @@ for chr in chromosomes:
 		continue
 
 	for (trid, site_idx, suffix, seq_batch) in parse_query_batch(open(query_path)):
+		if seq_batch == []:
+			continue
+
 		rec = dict()
 		score = dict()
 		type = transcript_type[trid]
 		if type != "lncRNA" and type != "protein_coding":
 			continue
 
-		print(trid, site_idx, suffix, seq_batch, file=sys.stderr)
+		site_id = pack_header(trid, site_idx, suffix)
 		coords = site_coords[site_id]
 		if coords in site_seen[suffix]:
 			site_signature, site_usage = site_seen[suffix][coords]
@@ -232,8 +247,11 @@ for chr in chromosomes:
 		chr, strand, now_pos = coords.split("&")
 		now_pos = int(now_pos)
 
-		for (genome, seq) in seq_batch:
-			rec[genome] = seq
+		for (genome, seq, d) in seq_batch:
+			rec[genome] = seq.seq.upper()
+#			print(d.id)
+#			print(seq.seq)
+#		print("")
 
 		idx = 0
 		var_freq = [0] * nn
@@ -241,33 +259,35 @@ for chr in chromosomes:
 		if strand == '+':
 			genome_pos = now_pos - half_motif
 			check_start = genome_pos - 1
-#			check = hg38[chr][check_start:check_start + nn]
+			check = hg38[chr][check_start:check_start + nn]
 			inc = +1
 		else:
 			genome_pos = now_pos + half_motif
 			check_start = genome_pos - 1 - nn + 1
-#			check = hg38[chr][check_start:check_start + nn].reverse_complement()
+			check = hg38[chr][check_start:check_start + nn].reverse_complement()
 			inc = -1
 
 		site = ''.join((c for c in rec["hg38"] if c != "-"))
 		now_motif = ''
 		for pos, c in enumerate(rec["hg38"]):
 			if c != '-':
-#				original_c = hg38[chr][genome_pos - 1]
-#				if strand == "-":
-#					original_c = Seq(original_c).complement()
+				original_c = hg38[chr][genome_pos - 1]
+				if strand == "-":
+					original_c = Seq(original_c).complement()
 
-#				if c != original_c:
-#					print(site, now_pos, genome_pos, strand, site_id, half_motif, file=sys.stderr)
-#					print(check, file=sys.stderr)
+				if c != original_c:
+					print(site, now_pos, genome_pos, strand, site_id, half_motif, file=sys.stderr)
+					print(check, file=sys.stderr)
 
-#				assert (c == original_c) or c == "N" or original_c == "N"
+				assert (c == original_c) or c == "N" or original_c == "N"
 				if idx == half_motif or idx == half_motif + 1:
 					now_motif = now_motif + c
 
 				for genome in all_genomes:
 					if genome in rec:
 						seq = rec[genome]
+						if pos >= len(seq):
+							print(genome)
 						if seq[pos] == c:
 							cons_count[idx] += 1
 						elif idx == half_motif or idx == half_motif + 1:

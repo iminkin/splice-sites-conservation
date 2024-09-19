@@ -53,9 +53,8 @@ def range(line):
 def generate_jobs(mane_path, query_path, seq, prefix, genome, jobs_file):
 	strand = {"+" : +1, "-" : -1}
 	mane_range = set()
-	for trid in os.listdir(mane_path):
-		for line in getline(open(os.path.join(mane_path, trid))):
-			mane_range.add(range(line))
+	for line in getline(open(mane_path)):
+		mane_range.add(range(line))
 	mane = []
 	query = []
 	all_genome = { genome : [] }
@@ -119,6 +118,6 @@ for record in SeqIO.parse(hg38_handle, "fasta"):
 	record_id = mol[record.id]
 	mane_path_now = os.path.join(mane_path, record_id)
 	query_path_now = os.path.join(query_path, record_id)
-	if os.path.isdir(mane_path_now) and os.path.isfile(query_path_now):
+	if os.path.isfile(mane_path_now) and os.path.isfile(query_path_now):
 		generate_jobs(mane_path_now, query_path_now, record.seq, shift, genome, jobs_file)
 

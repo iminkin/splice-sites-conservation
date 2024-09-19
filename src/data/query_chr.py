@@ -31,6 +31,7 @@ for rec in getline(open(sys.argv[1])):
 	tr = rec.attr["transcript_id"]
 	if tr != prev_tr:
 		intron_idx = 0
+		prev_tr = tr
 
 	start = rec.start - 1
 	end = rec.end

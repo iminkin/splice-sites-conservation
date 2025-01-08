@@ -55,5 +55,6 @@ with gzip.open(gtf, 'rt') as handle:
 
 out_handle = open(out_file, "w")
 for trid, record in transcript.items():
-	gen_introns(record, exon[trid], out_handle)
+	if trid in exon:
+		gen_introns(record, exon[trid], out_handle)
 out_handle.close()

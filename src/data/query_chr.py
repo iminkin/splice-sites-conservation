@@ -56,7 +56,7 @@ for rec in getline(open(sys.argv[1])):
 		SeqIO.write(multiple_alignment, out_handle, "fasta")
 
 		multiple_alignment = idx.get_spliced([end_center - shift], [end_center + shift + 2], -1)
-		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "d")
+		multiple_alignment = to_seq(multiple_alignment, tr, intron_idx, "a")
 		SeqIO.write(multiple_alignment, out_handle, "fasta")
 
 	intron_idx += 1

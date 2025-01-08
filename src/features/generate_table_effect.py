@@ -14,9 +14,6 @@ nn = 62
 main_pos = nn / 2 - 1
 half_motif = int((nn - 2) / 2)
 
-gen_header_idx = ["cons_" + str(idx - half_motif) for idx in range(nn)] + ["snp_" + str(idx - half_motif) for idx in range(nn)]
-gen_header = ",".join(gen_header_idx)
-
 suffix = ["a", "d"]
 alpha = "ACGT"
 
@@ -28,20 +25,6 @@ def donor_acceptor(chr, strand, start, end):
 		donor_coords = "&".join((chr, strand, str(end)))
 		acceptor_coords = "&".join((chr, strand, str(start + 1)))
 	return (donor_coords, acceptor_coords)
-
-def parse_variants(path, chr):
-	variants = dict()
-	file = os.path.join(path, chr + ".csv")
-	if os.path.isfile(file):
-		handle = open(file)
-		line = handle.readline()
-		variants[chr] = dict()
-		for line in handle:
-			line = line.strip().split(",")
-			pos, af = int(line[0]), float(line[1])
-			if af > 0:
-				variants[chr][pos] = af
-	return variants
 
 def get_type(dataset, gtf):
 	gene_type = dict()
@@ -66,23 +49,17 @@ def get_type(dataset, gtf):
 			transcript_id = rec.attr["transcript_id"]
 			if "gene_id" in rec.attr:
 				gene_id = rec.attr["gene_id"]
+				if gene_id in gene_type:
+					transcript_type[transcript_id] = gene_type[gene_id]
+				else:
+					transcript_type[transcript_id] = rec.attr[type_attr]
+
 				if not gene_id in transcripts_per_gene:
 					transcripts_per_gene[gene_id] = 0
 				transcripts_per_gene[gene_id] += 1
 				trid_to_geneid[transcript_id] = gene_id
-
-			if "transcript_type" in rec.attr:
-				transcript_type[transcript_id] = rec.attr["transcript_type"]
-			elif "gene_type" in rec.attr:
-				transcript_type[transcript_id] = rec.attr["gene_type"]
-			elif gene_id in gene_type:
-				now_gene_type = gene_type[gene_id]
-				if now_gene_type == "protein_coding" and rec.attr["transcript_biotype"] == "mRNA":
-					transcript_type[transcript_id] = now_gene_type
-				elif now_gene_type == "lncRNA" and rec.attr["transcript_biotype"] == "lnc_RNA":
-					transcript_type[transcript_id] = now_gene_type
-				else:
-					transcript_type[transcript_id] = "NA"
+			elif type_attr in rec.attr:
+				transcript_type[transcript_id] = rec.attr[type_attr]
 
 	return (gene_type, trid_to_geneid, transcript_type, transcripts_per_gene)
 
@@ -142,32 +119,6 @@ def get_extra_cons(extra_dir, all_genomes, chr):
 				cons[genome][line[0]] = set([int(p) for p in line[1:]])
 	return cons
 
-def parse_phast(phast_base, chr):
-	phast = dict()
-	phast[chr] = dict()
-	file_path = os.path.join(phast_base, chr + ".phastCons470way.wigFix.gz")
-	if os.path.isfile(file_path):
-		for line in gzip.open(file_path, "rt"):
-			line = line.strip().split()
-			if len(line) > 1:
-				start = int(line[2].split('=')[1])
-			else:
-				phast[chr][start] = float(line[0])
-				start += 1
-	return phast
-
-def parse_clinvar(clinvar):
-	ret = dict()
-	handle = open(clinvar)
-	handle.readline()
-	for line in handle:
-		line = line.strip().split(",")
-		chr, pos = "chr" + line[0], int(line[1])
-		if not chr in ret:
-			ret[chr] = set()
-		ret[chr].add(pos)
-	return ret
-
 def bin_search(a, x):
 	i = bisect.bisect_left(a, x)
 	if i != len(a) and a[i] == x:
@@ -224,12 +175,11 @@ phast_dir = sys.argv[11]
 all_genomes = set(sys.argv[12].split())
 chromosomes = sys.argv[13].split()
 
-clinvar = parse_clinvar(clinvar_file)
 
 limit = 180000 if dataset == "Random" else sys.maxsize
 
 count = {"a" : 0, "d" : 0}
-all_header = "dataset,transcript_id,intron_index,site_type,gene_type,inMANE,chr,strand,pos,cons_GTAG,motif,inside_mane_exon,minor_intron," + gen_header + ",reuse,phastCons_0,phastCons_1,clinvar_0,clinvar_1"
+all_header = "dataset,transcript_id,intron_index,site_type,gene_type,inMANE,chr,strand,pos,cons_GTAG,motif,inside_mane_exon,minor_intron,cons_array"
 print(all_header)
 printed = set()
 
@@ -259,8 +209,6 @@ for chr in chromosomes:
 	init = False
 	for (trid, site_idx, suffix, seq_batch) in parse_query_batch(open(query_path)):
 		if not init:
-			phast = parse_phast(phast_dir, chr)
-			variants = parse_variants(snp_base, chr)
 			extra_cons = get_extra_cons(extra_cons_dir, all_genomes, chr)
 			mane_coords = get_coords_set(os.path.join(mane_introns, chr))
 			mane_exons_pos = get_pos_array(os.path.join(mane_exons, chr))
@@ -325,59 +273,30 @@ for chr in chromosomes:
 
 				for genome in all_genomes:
 					if genome in rec:
-						seq = rec[genome]
-						if pos >= len(seq):
-							print(genome)
-						if seq[pos] == c:
-							cons_count[idx] += 1
-						elif idx == half_motif or idx == half_motif + 1:
-							gtat_conserved[genome] = 0
+						gtat_conserved[genome] = 0
 					else:
 						if genome in extra_cons and chr in extra_cons[genome] and genome_pos in extra_cons[genome][chr]:
 							cons_count[idx] += 1
 						elif idx == half_motif or idx == half_motif + 1:
 							gtat_conserved[genome] = 0
 
-				if chr in variants and genome_pos in variants[chr]:
-					var_freq[idx] = variants[chr][genome_pos]
-
 				idx += 1
 				genome_pos += inc
 
+		cons_array_species = ";".join([genome for genome in all_genomes if gtat_conserved[genome] == 1])
 		if count[suffix] < limit:
-			cons_array = [str(c) for c in cons_count]
-			freq_array = [str(f) for f in var_freq]
 			gtat_cons_count = str(list(gtat_conserved.values()).count(1))
-			if trid in trid_to_geneid and trid_to_geneid[trid] in transcripts_per_gene:
-				gene_id = trid_to_geneid[trid]
-				reuse = str(coords_use_rate[suffix][coords])
-			else:
-#				print(trid, trid in trid_to_geneid, trid in transcripts_per_gene, file=sys.stderr)
-				reuse = ""
-
 			mane = "1" if coords in mane_coords[suffix] else "0"
 			if mane == "1" and dataset == "Random":
 				continue
 
-			phast_pos_0 = now_pos
-			if strand == "+":
-				phast_pos_1 = phast_pos_0 + 1
-			else:
-				phast_pos_1 = phast_pos_0 - 1
-
-			phast_chr = phast[chr] if chr in phast else dict()
-			phast_0 = phast_chr[phast_pos_0] if phast_pos_0 in phast_chr else math.nan
-			phast_1 = phast_chr[phast_pos_1] if phast_pos_1 in phast_chr else math.nan
-
 			assert dataset != "MANE" or (dataset == "MANE" and mane == "1")
-			clinvar_chr = clinvar[chr] if chr in clinvar else dict()
-			clinvar_0 = "1" if phast_pos_0 in clinvar_chr else "0"
-			clinvar_1 = "1" if phast_pos_1 in clinvar_chr else "0"
 			inside_mane_exon = "1" if site_in_exon(mane_exons_pos, now_pos, strand, suffix) else "0"
 			is_minor_intron = "1" if chr in minor_introns_set and coords in minor_introns_set[chr][suffix] else "0"
-			val = [dataset, trid, str(site_idx), suffix, type, mane, chr, strand, str(now_pos), gtat_cons_count, now_motif, str(inside_mane_exon), is_minor_intron] + cons_array + freq_array + [reuse, str(phast_0), str(phast_1), clinvar_0, clinvar_1]
+			val = [dataset, trid, str(site_idx), suffix, type, mane, chr, strand, str(now_pos), gtat_cons_count, now_motif, str(inside_mane_exon), is_minor_intron, cons_array_species]
 			row = ",".join(val)
-			print(row)
+			if cons_array_species != "":
+				print(row)
 
 			if row.count(",") != all_header.count(","):
 				print(all_header.split(","))

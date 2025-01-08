@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 
@@ -13,7 +14,7 @@ def clipped_range(a, b):
 feature = {"d": ["cons_GTAG"], "a" : ["cons_GTAG"]}
 print(feature)
 
-def train_model(data, end):
+def train_model(data, end, roc_dir):
 	data = data[data["site_type"] == end]
 	data = data[((data["dataset"] == "MANE"))  | (data["dataset"] == "Random")]
 	print(data.head())
@@ -32,7 +33,7 @@ def train_model(data, end):
 	auc = roc_auc_score(y_test, y_predict_proba)
 	fpr, tpr, thr = roc_curve(y_test,  y_predict_proba)
 
-	roc_handle = open("../data/model/roc_0_" + end + ".txt", "w")
+	roc_handle = open(os.path.join(roc_dir, "roc_0_" + end + ".txt"), "w")
 	print(auc, file=roc_handle)
 	for fp, tp, th in zip(fpr, tpr, thr):
 		print(fp, tp, th, file=roc_handle)
@@ -64,12 +65,12 @@ end_labels = {"a": "Acceptor", "d": "Donor"}
 type_labels = {"protein_coding": "Coding", "lncRNA": "lncRNA"}
 
 out = []
-data = result = pd.read_csv("../data/db/splice_sites.csv")
+data = result = pd.read_csv(sys.argv[1])
 
 for end, end_label in end_labels.items():
-	regressor, decision = train_model(data, end)
+	regressor, decision = train_model(data, end, sys.argv[3])
 	out_data = run_model(data, end)
 	out.append(out_data)
 
 #pd.concat(out).to_csv("../data/model/model_out_0.csv", index=False)
-pd.concat(out).to_csv("../data/model/model_out.csv", index=False)
+pd.concat(out).to_csv(sys.argv[2], index=False)

@@ -20,7 +20,7 @@ for line in getline(open(exons_path)):
 
 
 elements_pointer = 0
-all_elements.sort(key=lambda x: x.start)
+all_elements.sort(key=lambda x: x.end)
 all_elements_map_left = [dict() for _ in all_elements]
 all_elements_map_right = [dict() for _ in all_elements]
 all_elements_start = [l.start for l in all_elements]
@@ -43,7 +43,9 @@ for bidx, block in enumerate(AlignIO.parse(maf_path, "maf")):
 		if block[0].seq[j] != '-':
 			pos0 = pos[0] + 1
 			new_sweep = [e for e in sweep if pos0 <= all_elements[e].end]
-			while elements_pointer < len(all_elements) and pos0 == all_elements[elements_pointer].start:
+			while elements_pointer < len(all_elements) and pos0 > all_elements[elements_pointer].end:
+				elements_pointer += 1
+			while elements_pointer < len(all_elements) and pos0 >= all_elements[elements_pointer].start:
 				new_sweep.append(elements_pointer)
 				elements_pointer += 1
 			sweep = new_sweep

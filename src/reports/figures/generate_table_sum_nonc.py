@@ -1,0 +1,46 @@
+import os
+import sys
+import pandas as pd
+
+#data = pd.read_csv("../../data/db/splice_sites.csv")
+data = result = pd.read_csv("../../../data/processed/model_out.csv")
+data = data[((data["site_type"] == "d") & (data["motif"] != "GT")) | ((data["site_type"] == "a") & (data["motif"] != "AG"))]
+
+ends = ["d", "a"]
+types = [("protein_coding", "Protein-Coding"), ("lncRNA", "lncRNA")]
+
+minus = "*"
+datasets = ["MANE", "GENCODE", "RefSeq", "CHESS 3"]
+
+def generate_row(df, table_row, correction = 0):
+	n = len(df.index) - correction
+	table_row.append("{:,}".format(n))
+
+mane_transcripts = 0
+for (type, type_title) in types:
+	print("\\hline")
+	print("\\textit{" + type_title +  "} & & & &  \\\\")
+	for title in datasets:
+		now_title = title
+		row = [now_title]
+		inMANE = 1 if title == "MANE" else 0
+		for cat in [0, 1]:
+			for end in ends:
+				if type == "protein_coding" and title != "MANE":
+					row[0] = now_title + minus
+				frame = data[(data["dataset"] == title) & (data["gene_type"] == type) & (data["site_type"] == end) & (data["inMANE"] == inMANE)]
+				if cat == 1:
+					if title != "MANE" and title != "Random":
+						frame = frame[frame["conserved"] == 1]
+					else:
+						frame = pd.DataFrame()
+
+				if not frame.empty:
+					generate_row(frame, row)
+				else:
+					row.append("-")
+ #		if row.count('-') < 4:
+		print("&".join(row) + "\\\\")
+
+print("")
+

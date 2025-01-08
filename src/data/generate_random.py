@@ -68,8 +68,7 @@ for seq_record in SeqIO.parse(gzip.open(human_path, "rt"), "fasta"):
 
 			site.add(b)
 			site.add(c)
-
-			attr = 'transcript_id "TR.' + str(motif_idx) + '"; gene_type "protein_coding"'
+			attr = 'transcript_id "TR.' + str(motif_idx) + '"; gene_type "protein_coding";'
 
 			trans_record =  [chr, "RND", "transcript", str(a + 1), str(d + 1), ".", "+", ".", attr]
 			exon_record_1 = [chr, "RND", "exon",       str(a + 1), str(b + 1), ".", "+", ".",  attr]

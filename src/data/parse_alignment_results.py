@@ -7,7 +7,7 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 from functools import partial
 
-def parse_report(hg38, report_path, threshold, out_file):
+def parse_report(hg38, report_path, chr, threshold, out_file):
 	buffer = []
 	cons = dict()
 	report_path_parts = report_path.split("/")
@@ -16,7 +16,10 @@ def parse_report(hg38, report_path, threshold, out_file):
 		if line == "":
 			line = buffer[1].split()
 			human_chr, human_start, human_end = line[0], int(line[3]), int(line[4])
-			human_chr_seq = hg38[human_chr]
+			if human_chr != chr:
+				buffer = []
+				continue
+#			human_chr_seq = hg38[human_chr]
 
 			human_seq = buffer[2]
 			match_cnt = buffer[3].count("|")
@@ -37,15 +40,15 @@ def parse_report(hg38, report_path, threshold, out_file):
 				human_pos = human_end + prefix
 			for i in range(len(human_seq)):
 				if human_seq[i] != "-":
-					check_ch = human_chr_seq[human_pos - 1].upper()
-					if query_strand == "-":
-						check_ch = Seq(check_ch).complement()
-					if human_seq[i] != check_ch:
-						print(human_seq)
-						print(target_seq)
-						print(line)
-						print(i, human_seq[i], check_ch, query_strand, human_pos)
-					assert(human_seq[i] == check_ch)
+#					check_ch = human_chr_seq[human_pos - 1].upper()
+#					if query_strand == "-":
+#						check_ch = Seq(check_ch).complement()
+#					if human_seq[i] != check_ch:
+#						print(human_seq)
+#						print(target_seq)
+#						print(line)
+#						print(i, human_seq[i], check_ch, query_strand, human_pos)
+#					assert(human_seq[i] == check_ch)
 					if human_seq[i] == target_seq[i]:
 						if not human_chr in cons:
 							cons[human_chr] = []
@@ -66,13 +69,21 @@ for line in open(sys.argv[2]):
 		if line[-1] != "na":
 			mol[line[6]] = line[-1]
 
+
+results_dir = sys.argv[3]
+identity_dir = sys.argv[4]
+out_file = sys.argv[5]
+out_file_base = out_file.split("/")[-1]
+genome, chr = out_file_base.split("!")
+id_file = open(os.path.join(identity_dir, genome))
+
 prefix = 30
 hg38 = dict()
-for record in SeqIO.parse(gzip.open(sys.argv[1], "rt"), "fasta"):
-	hg38[mol[record.id]] = Seq(record.seq.upper())
+#for record in SeqIO.parse(gzip.open(sys.argv[1], "rt"), "fasta"):
+#	if mol[record.id] == chr:
+#		hg38[mol[record.id]] = Seq(record.seq.upper())
 
-id_file = open(sys.argv[4])
 identity = id_file.readline().strip().split()
 avg, std = float(identity[0]), float(identity[1])
-out_file = open(sys.argv[5], "w")
-parse_report(hg38, sys.argv[3], avg - std, out_file)
+out_file_handle = open(out_file, "w")
+parse_report(hg38, os.path.join(results_dir, genome), chr, avg - std, out_file_handle)

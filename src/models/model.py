@@ -57,8 +57,8 @@ def run_model(data, end):
 
 	predict_all = regressor.predict_proba(all_X)[::, 1]
 	new_data = new_data.assign(prob=predict_all)
-	conserved = [(1 if p >= decision else 0) for p in predict_all]
-	new_data = new_data.assign(conserved=conserved)
+	well_supported = [(1 if p >= decision else 0) for p in predict_all]
+	new_data = new_data.assign(well_supported=well_supported)
 
 	return new_data
 

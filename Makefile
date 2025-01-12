@@ -48,7 +48,6 @@ ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),$(genomes_dir)/$(genome).
 zoo_genomes_files := $(foreach genome,$(zoo_genomes),$(genomes_dir)/$(genome).fa.gz)
 ncbi_genomes_files := $(foreach genome,$(ncbi_genomes),$(genomes_dir)/$(genome).fa.gz)
 all_genomes := $(ucsc_genomes) $(zoo_genomes) $(ncbi_genomes)
-#all_genomes := panTro6
 
 gencode_gtf := data/raw/annotation/gencode.v$(gencode_version).annotation.gtf.gz
 refseq_filename := $(human_version)_genomic.gtf.gz
@@ -125,13 +124,19 @@ refseq_effect_csv := data/processed/refseq/$(refseq_version)_effect.csv
 chess_effect_csv := data/processed/chess/$(chess_version)_effect.csv
 random_effect_csv := data/processed/random/$(random_version)_effect.csv
 
+chess_pos = data/processed/chess/$(chess_version)_pos.gtf
+chess_neg = data/processed/chess/$(chess_version)_neg.gtf
+gencode_pos = data/processed/gencode/$(gencode_version)_pos.gtf
+gencode_neg = data/processed/gencode/$(gencode_version)_neg.gtf
+refseq_pos = data/processed/refseq/$(refseq_version)_pos.gtf
+refseq_neg = data/processed/refseq/$(refseq_version)_neg.gtf
 
 #################################################################################
 # COMMANDS                                                                      #
 #################################################################################
 
 
-all: $(introns_csv) $(all_effect_csv) $(model_0_csv) $(all_cons_csv)
+all: $(introns_csv) $(model_0_csv) $(all_cons_csv) $(chess_pos) $(chess_neg) $(gencode_pos) $(gencode_neg) $(refseq_pos) $(refseq_neg)
 
 
 clean:
@@ -139,9 +144,24 @@ clean:
 	find ./data/processed -type f -not -name '.gitkeep' -delete
 #	find ./data/raw -type f -not -name '.gitkeep' -delete
 
-## Install requirements
 
-requirements:
+## Positive and negative subsets of annotations
+
+$(chess_neg): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(chess_gtf) $(transcripts_csv) 0 $(chess_neg)
+$(chess_pos): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(chess_gtf) $(transcripts_csv) 1 $(chess_pos)
+
+$(gencode_neg): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(gencode_gtf) $(transcripts_csv) 0 $(gencode_neg)
+$(gencode_pos): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(gencode_gtf) $(transcripts_csv) 1 $(gencode_pos)
+
+$(refseq_neg): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(refseq_gtf) $(transcripts_csv) 0 $(refseq_neg)
+$(refseq_pos): $(introns_csv)
+	$(PYTHON_INTERPRETER) src/reports/gen_result_gtf.py $(refseq_gtf) $(transcripts_csv) 1 $(refseq_pos)
+
 
 ## Intron annotation
 

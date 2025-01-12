@@ -57,8 +57,7 @@ for _, row in df_mane.iterrows():
 	mane_sites.add(site(row["chr"], row["strand"], row["pos"]))
 
 df_non_mane = df[df["inMANE"] == 0]
-#df_logit = df_non_mane[df_non_mane["conserved"] == 1]
-df_logit = df[df["conserved"] == 1]
+df_logit = df[df["well_supported"] == 1]
 df_phast = df_non_mane[df_non_mane.apply(lambda x: min(x["phastCons_0"], x["phastCons_1"]) > 0.5, axis=1)]
 
 for _, row in df_logit.iterrows():
@@ -88,9 +87,9 @@ chess_transcript = set()
 
 all_tissues = list(coverage.keys())
 all_tissues.sort()
-header = ["dataset", "gene_type", "inMANE", "chr", "strand", "start", "end", "donor_mane", "acceptor_mane", "donor_cons", "acceptor_cons"] + all_tissues
+header = ["dataset", "gene_type", "inMANE", "chr", "strand", "start", "end", "donor_mane", "acceptor_mane", "donor_well_supported", "acceptor_well_supported"] + all_tissues
 print(",".join(header), file=out)
-tr_header = ["dataset", "transcript_id", "gene_type", "inMANE", "chr", "strand", "start", "end", "total_sites", "mane_sites", "conserved_non_mane_sites", "conservation_status"]
+tr_header = ["dataset", "transcript_id", "gene_type", "inMANE", "chr", "strand", "start", "end", "total_sites", "mane_sites", "well_supported_non_mane_sites", "well_supported"]
 print(",".join(tr_header), file=tr_out)
 mane_intron = set()
 mane_transcript = set()
@@ -164,6 +163,5 @@ for db in db_list:
 			cons_status = "1" if total_sites_count == mane_sites_count + conserved_non_mane_sites_count else "0"
 			now_mane_transcript = "1" if tr_signature in mane_transcript else "0"
 			print(",".join((title, trid, trid_type, now_mane_transcript, now_coords[0], now_coords[1], str(now_coords[2]), str(now_coords[3]),  str(total_sites_count), str(mane_sites_count), str(conserved_non_mane_sites_count), cons_status)), file=tr_out)
-	print(len(mane_transcript))
 
 

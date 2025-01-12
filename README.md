@@ -31,11 +31,20 @@ The documentation is still in progress, here is a brief description of the key f
 * data/processed/introns.csv.gz: the CSV table containing information about the unique introns 
  form each annotation analyzed. The table is described in a section below.
 
-* data/processed/transcripts.csvs.gz: the CSV table containing one row per transcript in each
+* data/processed/transcripts.csv.gz: the CSV table containing one row per transcript in each
  annotation with their support status (well-supported or less-supported).
 
-Description of the fields of the table model_out(0).csv
-=======================================================
+* data/processed/{gencode,refseq,chess}/{gencode_version,refseq_version,chess_version}_pos.gtf:
+ a GTF file containing a subset of corresponding annotation in which all transcripts are 
+ well-supported.
+
+* data/processed/{gencode,refseq,chess}/{gencode_version,refseq_version,chess_version}_neg.gtf:
+ a GTF file containing a subset of corresponding annotation in which all transcripts are
+ less-supported.
+
+
+Description of the fields of the table data/processed/model_out(0).csv
+======================================================================
 
 * dataset: the name of the dataset from where the splice site comes
 * transcript_id: the id of the transcript that that the splice site belongs to;
@@ -65,3 +74,41 @@ Description of the fields of the table model_out(0).csv
  the model (1 is conserved)
 * prob: probabibility of the site being well_supported, as calculated by the
  model
+
+Description of the fields of the table data/processed/introns.csv
+======================================================================
+* dataset: the name of the dataset from where the splice site comes
+* transcript_id: the id of the transcript
+* gene_type: either "protein_coding" or "lncRNA" depending on the source gene
+* inMANE: 1 if the whole intron appears in a MANE transcript, 0 otherwise
+* chr: chromosome of the intron location
+* strand: strand of the intron location
+* start, end: starting and ending position of the intron (1-based)
+* donor(acceptor)_mane: 1 if the donor (acceptor) site of the intron is in MANE,
+ 0 otherwise
+* donor(acceptor)_well_supported: 1 if the donor (acceptor) site of the intron
+ is well_supported, 0 otherwise
+* Adipose_Tissue,Adrenal_Gland,Bladder,Blood,Blood_Vessel,Bone_Marrow,Brain,
+ Breast,Cervix_Uteri,Colon,Esophagus,Fallopian_Tube,Heart, Kidney,Liver,Lung,
+ Muscle,Nerve,Ovary,Pancreas,Pituitary,Prostate,Salivary_Gland,Skin,
+ Small_Intestine,Spleen,Stomach,Testis,Thyroid,Uterus,Vagina: the number of
+ reads spanning this particular intron junction in GTEx data, aggregated
+ across all samples of a certain tissue
+
+Description of the fields of the table data/processed/transcripts.csv
+=====================================================================
+* dataset: the name of the dataset from where the splice site comes
+* transcript_id: the id of the transcript
+* gene_type: either "protein_coding" or "lncRNA" depending on the source gene
+* inMANE: 1 if the whole transcript appears in a MANE transcript, 0 otherwise
+* chr: chromosome of the transcript location
+* strand: strand of the transcript location
+* start, end: starting and ending position of the transcript (1-based)
+* total_sites: number of splice sites in the transcript
+* mane_sites: number of splice sites that also appear in MANE
+* well_supported_non_mane_sites: numbe of splice site not appearing in MANE, but
+ that are well-supported
+* well_supported: 1 if each splice site of the transcript is either well-supported
+ or appears in MANE, 0 if at least one site is less-supported (and does not appear
+ in MANE)
+

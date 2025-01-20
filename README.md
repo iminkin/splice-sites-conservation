@@ -21,18 +21,33 @@ The documentation is still in progress, here is a brief description of the key f
  ones. These files are described below. Only protein-coding and lncRNA genes were included
   in the analysis.
 
+* data/processed/splice_sites.csv.gz: the input file for the regression models; summarizes all
+ unique splice from all the dataset.
+
 * data/processed/model_out.csv.gz: the CSV table containing all unique splice sites from
  each annotation we analyzed, along with their properties and support status. The description
  is in a subsection below.
 
+* data/src/models/model.py: the python script generating the model_out.csv and containing the
+ splice site classification model.
+
 * data/processed/model_out_0.csv.gz: the same as above, except the results from the model that
  uses conservation of the GT/AG nucleotides only.
+
+* data/src/model/model_0.py: the python script generating the the model_out_0.csv and containing
+ the splice site classification model that uses conservation of the GT/AG nucleotides only.
 
 * data/processed/introns.csv.gz: the CSV table containing information about the unique introns 
  form each annotation analyzed. The table is described in a section below.
 
 * data/processed/transcripts.csv.gz: the CSV table containing one row per transcript in each
  annotation with their support status (well-supported or less-supported).
+
+* src/features/annotate_introns.py: the python script used to generate files introns.csv and
+ transcripts.csv
+
+* src/features/generate_table.py: the python script used to generate the input table
+ splice_sites.csv for the file implementing the models.
 
 * data/processed/{gencode,refseq,chess}/{gencode_version,refseq_version,chess_version}_pos.gtf:
  a GTF file containing a subset of corresponding annotation in which all transcripts are 
@@ -41,6 +56,10 @@ The documentation is still in progress, here is a brief description of the key f
 * data/processed/{gencode,refseq,chess}/{gencode_version,refseq_version,chess_version}_neg.gtf:
  a GTF file containing a subset of corresponding annotation in which all transcripts are
  less-supported.
+
+* data/src/reports/*: a collection of scripts generating figures for the manuscript. They
+ are not called by the Makefile (yet), and each script is supposed to be ran from inside
+ its directory.
 
 
 Description of the fields of the table data/processed/model_out(0).csv

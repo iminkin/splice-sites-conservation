@@ -48,7 +48,7 @@ Intermediate files and directories, absent in the repository and filled by the p
 
 * data/interim/results: directory containing the results of the alignment jobs. Each file contains
   human exons that were realigned to this genome. The file contains a sequence of records; each record
-  contains 6 lines, and records are separated by a blank line. Forma of the record, line-by-line:
+  contains 6 lines, and records are separated by a blank line. Format of the record, line-by-line:
 
    1. A pair of integers</li>
    2. The GTF line corresponding to the exon in the original annotation</li>
@@ -85,9 +85,12 @@ Raw data files:
 * data/raw/genomes: sequence of 405 genomes we used to realign the exons to. Originally, these files are
   populated and formatted by the Makefile from three sources: UCSCS Genome Browser FTP, NCBI, and DnaZoo.
   Unfortunately, the availability of these genomes change over time, and for the sake of reproducibility,
-  we archived all of them at FTP: ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/genomes/
+  we archived all of them at FTP: ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/genomes/.
 
-Source files:
+* data/raw/expression: expression data, one file per tissue, each line shows coverage for a specific
+ intron junction. Archived at FTP: ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/expression/.
+
+Some source files:
 
 * Makefile: the make pipeline to generate the analysis of the splice sites
  and introns/transcripts. Downloads the human genome, gene annotations, the
@@ -101,12 +104,16 @@ Source files:
  In addition, it produces two files for each annotation: a "pos" file that contains
  all transcripts that are well-supported, and a "neg" file containing "less-supported"
  ones. These files are described below. Only protein-coding and lncRNA genes were included
-in the analysis.
+ in the analysis.
 
-* data/src/models/model.py: the python script generating the model_out.csv and containing the
+* src/data/realignment/*.py: scripts that analyze the alignment's completeness with respect
+ to the human gene annotation and realign missing exon/genome pairs. To be released as a 
+ separate tool in the near future.
+
+* src/data/models/model.py: the python script generating the model_out.csv and containing the
  splice site classification model.
 
-* data/src/model/model_0.py: the python script generating the the model_out_0.csv and containing
+* src/data/model/model_0.py: the python script generating the the model_out_0.csv and containing
  the splice site classification model that uses conservation of the GT/AG nucleotides only.
 
 * src/features/annotate_introns.py: the python script used to generate files introns.csv and
@@ -114,7 +121,6 @@ in the analysis.
 
 * src/features/generate_table.py: the python script used to generate the input table
  splice_sites.csv for the file implementing the models.
-
 
 * data/src/reports/*: a collection of scripts generating figures for the manuscript. They
  are not called by the Makefile (yet), and each script is supposed to be run from inside

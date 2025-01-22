@@ -26,26 +26,24 @@ all_types = ["protein_coding", "lncRNA"]
 model_out = sys.argv[1]
 out_file = sys.argv[2]
 tr_out_file = sys.argv[3]
-db_list = sys.argv[4:]
+coverage_path = sys.argv[4]
+db_list = sys.argv[5:]
 
 coverage = dict()
-coverage_path = '/ccb/salz8-1/avaraby/chess3_rerun_31102021/step1/'
-for tissue in os.listdir(coverage_path):
-	tissue_path = os.path.join(coverage_path, tissue)
-	if os.path.isdir(tissue_path):
-		coverage[tissue] = dict()
-		bed = os.path.join(tissue_path, tissue + ".def.junctions.bed")
-		handle = open(bed)
-		handle.readline()
-		now_coverage = coverage[tissue]
-		for line in handle:
-			line = line.strip().split("\t")
-			chr, strand, start, end, cov = line[0], line[-1], int(line[1]), int(line[2]), int(line[-2])
-			start += 1
-			donor, acceptor = donor_acceptor(chr, strand, start, end)
-			if not donor in now_coverage:
-				now_coverage[donor] = dict()
-			now_coverage[donor][acceptor] = cov
+for bed in os.listdir(coverage_path):
+	bed_path = os.path.join(coverage_path, bed)
+	coverage[tissue] = dict()
+	handle = gzip.open(bed, "rt")
+	handle.readline()
+	now_coverage = coverage[tissue]
+	for line in handle:
+		line = line.strip().split("\t")
+		chr, strand, start, end, cov = line[0], line[-1], int(line[1]), int(line[2]), int(line[-2])
+		start += 1
+		donor, acceptor = donor_acceptor(chr, strand, start, end)
+		if not donor in now_coverage:
+			now_coverage[donor] = dict()
+		now_coverage[donor][acceptor] = cov
 
 mane_sites = set()
 logit_conserved = set()

@@ -55,6 +55,7 @@ refseq_gtf := data/raw/annotation/$(refseq_filename)
 mane_gtf := data/raw/annotation/MANE.GRCh38.v$(mane_version).ensembl_genomic.gtf.gz
 chess_gtf := data/raw/annotation/chess$(chess_version).GRCh38.gtf.gz
 random_gtf := data/raw/annotation/random.gtf.gz
+expression_dir := data/raw/expression
 
 #################################################################################
 # INTERIM FILES                                                                 #
@@ -166,7 +167,7 @@ $(refseq_pos): $(introns_csv)
 ## Intron annotation
 
 $(introns_csv): $(model_csv)
-	$(PYTHON_INTERPRETER) src/features/annotate_introns.py $(model_csv) $(introns_csv) $(transcripts_csv) MANE!$(mane_dir)/introns!$(mane_gtf) GENCODE!$(gencode_dir)/introns!$(gencode_gtf) RefSeq!$(refseq_dir)/introns!$(refseq_gtf) "CHESS 3"!$(chess_dir)/introns!$(chess_gtf)
+	$(PYTHON_INTERPRETER) src/features/annotate_introns.py $(model_csv) $(introns_csv) $(transcripts_csv) $(expression_dir) MANE!$(mane_dir)/introns!$(mane_gtf) GENCODE!$(gencode_dir)/introns!$(gencode_gtf) RefSeq!$(refseq_dir)/introns!$(refseq_gtf) "CHESS 3"!$(chess_dir)/introns!$(chess_gtf)
 
 ## Run the model
 

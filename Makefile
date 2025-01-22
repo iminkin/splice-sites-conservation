@@ -5,6 +5,7 @@
 PROJECT_NAME = splice-sites-conservation
 PYTHON_INTERPRETER = python
 CONFIGURATION = release
+tissues := Adipose_Tissue Adrenal_Gland Bladder Blood Blood_Vessel Bone_Marrow Brain Breast Cervix_Uteri Colon Esophagus Fallopian_Tube Heart Kidney Liver Lung Muscle Nerve Ovary Pancreas Pituitary Prostate Salivary_Gland Skin Small_Intestine Spleen Stomach Testis Thyroid Uterus Vagina
 
 ifeq ($(CONFIGURATION),debug)
 rand_limit := 20000
@@ -57,6 +58,7 @@ chess_gtf := data/raw/annotation/chess$(chess_version).GRCh38.gtf.gz
 random_gtf := data/raw/annotation/random.gtf.gz
 expression_dir := data/raw/expression
 
+expression_files := $(foreach tissue,$(tissues),$(expression_dir)/$(tissue).def.junctions.bed.gz)
 #################################################################################
 # INTERIM FILES                                                                 #
 #################################################################################
@@ -166,8 +168,13 @@ $(refseq_pos): $(introns_csv)
 
 ## Intron annotation
 
-$(introns_csv): $(model_csv)
+$(introns_csv): $(model_csv) $(expression_files)
 	$(PYTHON_INTERPRETER) src/features/annotate_introns.py $(model_csv) $(introns_csv) $(transcripts_csv) $(expression_dir) MANE!$(mane_dir)/introns!$(mane_gtf) GENCODE!$(gencode_dir)/introns!$(gencode_gtf) RefSeq!$(refseq_dir)/introns!$(refseq_gtf) "CHESS 3"!$(chess_dir)/introns!$(chess_gtf)
+
+## Download the expression files:
+
+$(expression_files):
+        wget --content-on-error --directory-prefix=$(expression_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/expression/$(@F)
 
 ## Run the model
 
@@ -241,7 +248,10 @@ $(random_effect_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnoma
 $(alignment_reports): $(alignment_results) $(identity_results)
 	$(PYTHON_INTERPRETER) src/data/realignment/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/ $(realignment_dir)/identity/ $(@)
 
-$(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
+#$(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
+#	$(PYTHON_INTERPRETER) src/data/realignment/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
+
+$(alignment_results): $(alignment_jobs) $(all_genomes)
 	$(PYTHON_INTERPRETER) src/data/realignment/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
 
 $(identity_results): $(mapped_exons)
@@ -365,7 +375,7 @@ data/raw/clinvar/clinvar.vcf.gz:
 ## Get the alignmnet
 
 $(maf_files): ;
-#	wget --directory-prefix=data/raw/maf https://hgdownload.soe.ucsc.edu/goldenPath/hg38/multiz470way/maf/$(@F)
+	wget --directory-prefix=data/raw/maf https://hgdownload.soe.ucsc.edu/goldenPath/hg38/multiz470way/maf/$(@F)
 
 ## Get and parse the gnomAD data
 
@@ -379,6 +389,11 @@ $(gnomad_files):
 
 $(phast_wig):
 	wget --directory-prefix=data/raw/phast https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phastCons470way/hg38.470way.phastCons/$(@F)
+
+## Download the archived and processed genome files:
+
+$(all_genomes):
+        wget --content-on-error --directory-prefix=$(genomes_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/genomes/$(@F)
 
 ## Get the genomes from the alignment hosted by UCSC
 

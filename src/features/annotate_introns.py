@@ -32,6 +32,7 @@ db_list = sys.argv[5:]
 coverage = dict()
 for bed in os.listdir(coverage_path):
 	bed_path = os.path.join(coverage_path, bed)
+	tissue = bed.split(".")[0]
 	coverage[tissue] = dict()
 	handle = gzip.open(bed, "rt")
 	handle.readline()

@@ -238,23 +238,23 @@ $(random_effect_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnoma
 ## Realign exons to other genomes
 
 $(alignment_reports): $(alignment_results) $(identity_results)
-	$(PYTHON_INTERPRETER) src/data/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/ $(realignment_dir)/identity/ $(@)
+	$(PYTHON_INTERPRETER) src/data/realignment/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/ $(realignment_dir)/identity/ $(@)
 
 $(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
-	$(PYTHON_INTERPRETER) src/data/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
+	$(PYTHON_INTERPRETER) src/data/realignment/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
 
 $(identity_results): $(mapped_exons)
-	$(PYTHON_INTERPRETER) src/data/parse_identity_results.py $(realignment_dir)/mapped_exons $(@)
+	$(PYTHON_INTERPRETER) src/data/realignment/parse_identity_results.py $(realignment_dir)/mapped_exons $(@)
 
 $(alignment_jobs): $(mapped_exons) $(human_genome) $(human_stats) $(mane_exons)
-	$(PYTHON_INTERPRETER) src/data/generate_alignment_jobs.py $(human_genome) $(human_stats) $(mane_dir)/exons $(realignment_dir)/mapped_exons $(@)
+	$(PYTHON_INTERPRETER) src/data/realignment/generate_alignment_jobs.py $(human_genome) $(human_stats) $(mane_dir)/exons $(realignment_dir)/mapped_exons $(@)
 
 $(mapped_exons): $(unique_exons) $(maf_files)
-	$(PYTHON_INTERPRETER) src/data/map_exons.py data/raw/maf/$(@F).maf $(realignment_dir)/unique_exons/$(@F) $(realignment_dir)/mapped_exons/$(@F)
+	$(PYTHON_INTERPRETER) src/data/realignment/map_exons.py data/raw/maf/$(@F).maf $(realignment_dir)/unique_exons/$(@F) $(realignment_dir)/mapped_exons/$(@F)
 
 ## Generate unique exons from all datasets:
 $(unique_exons): $(gencode_exons) $(refseq_exons) $(chess_exons) $(mane_exons) $(random_exons)
-	$(PYTHON_INTERPRETER) src/data/unique_exons.py $(gencode_dir)/exons/$(@F) $(refseq_dir)/exons/$(@F) $(chess_dir)/exons/$(@F) $(mane_dir)/exons/$(@F) $(random_dir)/exons/$(@F) > $(realignment_dir)/unique_exons/$(@F)
+	$(PYTHON_INTERPRETER) src/data/realignment/unique_exons.py $(gencode_dir)/exons/$(@F) $(refseq_dir)/exons/$(@F) $(chess_dir)/exons/$(@F) $(mane_dir)/exons/$(@F) $(random_dir)/exons/$(@F) > $(realignment_dir)/unique_exons/$(@F)
 
 ## Get GRCh38:
 

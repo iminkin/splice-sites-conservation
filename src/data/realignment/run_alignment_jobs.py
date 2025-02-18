@@ -10,8 +10,8 @@ from Bio.Seq import Seq
 
 def realign(job_path, genome_fagz, report_path):
 	job_path_part = job_path.split("/")
-	if not os.path.isfile(genome_fagz):
-		return
+#	if not os.path.isfile(genome_fagz):
+#		return
 
 	seq = dict()
 	for record in SeqIO.parse(gzip.open(genome_fagz, "rt"), "fasta"):

@@ -106,6 +106,9 @@ Some source files:
  ones. These files are described below. Only protein-coding and lncRNA genes were included
  in the analysis.
 
+ Note: the Makefile can be ran on a limited dataset of chromosomes and genomes for testing
+ and debugging. To run in this mode, set the variable CONFIGURATION to "debug".
+
 * src/data/realignment/*.py: scripts that analyze the alignment's completeness with respect
  to the human gene annotation and realign missing exon/genome pairs. To be released as a 
  separate tool in the near future.

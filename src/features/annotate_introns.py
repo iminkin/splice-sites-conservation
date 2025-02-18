@@ -31,10 +31,13 @@ db_list = sys.argv[5:]
 
 coverage = dict()
 for bed in os.listdir(coverage_path):
+	if bed == ".gitkeep":
+		continue
+
 	bed_path = os.path.join(coverage_path, bed)
 	tissue = bed.split(".")[0]
 	coverage[tissue] = dict()
-	handle = gzip.open(bed, "rt")
+	handle = gzip.open(bed_path, "rt")
 	handle.readline()
 	now_coverage = coverage[tissue]
 	for line in handle:
@@ -158,7 +161,6 @@ for db in db_list:
 			tr_signature = "!".join(tr_signature)
 			if title == "MANE":
 				mane_transcript.add(tr_signature)
-				print(tr_signature)
 			cons_status = "1" if total_sites_count == mane_sites_count + conserved_non_mane_sites_count else "0"
 			now_mane_transcript = "1" if tr_signature in mane_transcript else "0"
 			print(",".join((title, trid, trid_type, now_mane_transcript, now_coords[0], now_coords[1], str(now_coords[2]), str(now_coords[3]),  str(total_sites_count), str(mane_sites_count), str(conserved_non_mane_sites_count), cons_status)), file=tr_out)

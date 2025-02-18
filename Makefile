@@ -4,15 +4,15 @@
 
 PROJECT_NAME = splice-sites-conservation
 PYTHON_INTERPRETER = python
-CONFIGURATION = release
+#CONFIGURATION = debug
 tissues := Adipose_Tissue Adrenal_Gland Bladder Blood Blood_Vessel Bone_Marrow Brain Breast Cervix_Uteri Colon Esophagus Fallopian_Tube Heart Kidney Liver Lung Muscle Nerve Ovary Pancreas Pituitary Prostate Salivary_Gland Skin Small_Intestine Spleen Stomach Testis Thyroid Uterus Vagina
 
 ifeq ($(CONFIGURATION),debug)
 rand_limit := 20000
 chromosomes := chr19_KI270882v1_alt chr19_KI270916v1_alt chr19 chr20 chr21 chr22
 complete_chromosomes := chr19 chr20 chr21 chr22
-maf_chromosomes := $(complete_chromosomes)
-phast_chromosomes = $(complete_chromosomes)
+maf_chromosomes := $(chromosomes)
+phast_chromosomes = $(chromosomes)
 ucsc_genomes := panTro6 panPan3
 zoo_genomes := HLmacFus1 HLallNig1
 ncbi_genomes := HLhylMol2 HLsemEnt1
@@ -49,6 +49,8 @@ ucsc_genomes_files := $(foreach genome,$(ucsc_genomes),$(genomes_dir)/$(genome).
 zoo_genomes_files := $(foreach genome,$(zoo_genomes),$(genomes_dir)/$(genome).fa.gz)
 ncbi_genomes_files := $(foreach genome,$(ncbi_genomes),$(genomes_dir)/$(genome).fa.gz)
 all_genomes := $(ucsc_genomes) $(zoo_genomes) $(ncbi_genomes)
+all_genomes_files := $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
+$(info $(all_genomes_files))
 
 gencode_gtf := data/raw/annotation/gencode.v$(gencode_version).annotation.gtf.gz
 refseq_filename := $(human_version)_genomic.gtf.gz
@@ -145,7 +147,7 @@ all: $(introns_csv) $(model_0_csv) $(all_cons_csv) $(chess_pos) $(chess_neg) $(g
 clean:
 	find ./data/interim -type f -not -name '.gitkeep' -delete
 	find ./data/processed -type f -not -name '.gitkeep' -delete
-#	find ./data/raw -type f -not -name '.gitkeep' -delete
+	find ./data/raw -type f -not -name '.gitkeep' -delete
 
 
 ## Positive and negative subsets of annotations
@@ -174,7 +176,7 @@ $(introns_csv): $(model_csv) $(expression_files)
 ## Download the expression files:
 
 $(expression_files):
-        wget --content-on-error --directory-prefix=$(expression_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/expression/$(@F)
+	wget --content-on-error --directory-prefix=$(expression_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/expression/$(@F)
 
 ## Run the model
 
@@ -248,10 +250,7 @@ $(random_effect_csv): $(random_gtf) $(random_query) $(alignment_reports) $(gnoma
 $(alignment_reports): $(alignment_results) $(identity_results)
 	$(PYTHON_INTERPRETER) src/data/realignment/parse_alignment_results.py $(human_genome) $(human_stats) $(realignment_dir)/results/ $(realignment_dir)/identity/ $(@)
 
-#$(alignment_results): $(alignment_jobs) $(ucsc_genomes_files) $(zoo_genomes_files) $(ncbi_genomes_files)
-#	$(PYTHON_INTERPRETER) src/data/realignment/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
-
-$(alignment_results): $(alignment_jobs) $(all_genomes)
+$(alignment_results): $(all_genomes_files) $(alignment_jobs)
 	$(PYTHON_INTERPRETER) src/data/realignment/run_alignment_jobs.py $(realignment_dir)/jobs/$(@F) $(genomes_dir)/$(@F).fa.gz $(@)
 
 $(identity_results): $(mapped_exons)
@@ -390,23 +389,23 @@ $(gnomad_files):
 $(phast_wig):
 	wget --directory-prefix=data/raw/phast https://hgdownload.soe.ucsc.edu/goldenPath/hg38/phastCons470way/hg38.470way.phastCons/$(@F)
 
-## Download the archived and processed genome files:
+## Download the archived and processed genomes files:
 
-$(all_genomes):
-        wget --content-on-error --directory-prefix=$(genomes_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/genomes/$(@F)
+$(all_genomes_files):
+	wget --directory-prefix=$(genomes_dir) ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/genomes/$(@F)
 
 ## Get the genomes from the alignment hosted by UCSC
 
-$(ucsc_genomes_files):
-	wget --directory-prefix=data/raw/genomes https://hgdownload.soe.ucsc.edu/goldenPath/$(basename $(basename $(@F)))/bigZips/$(@F)
+#$(ucsc_genomes_files):
+#	wget --directory-prefix=data/raw/genomes https://hgdownload.soe.ucsc.edu/goldenPath/$(basename $(basename $(@F)))/bigZips/$(@F)
 
 ## Get the genomes from the alignment hosted by DNA Zoo
 
-$(zoo_genomes_files):
-	src/data/download_zoo.sh src/data/dna_zoo.txt $(@F) data/raw/genomes
+#$(zoo_genomes_files):
+#	src/data/download_zoo.sh src/data/dna_zoo.txt $(@F) data/raw/genomes
 
 ## Get the genomes from the alignment hosted by NCBI
 
-$(ncbi_genomes_files):
-	src/data/download_ncbi.sh src/data/ncbi.txt $(@F) data/raw/genomes data/tmp
+#$(ncbi_genomes_files):
+#	src/data/download_ncbi.sh src/data/ncbi.txt $(@F) data/raw/genomes data/tmp
 

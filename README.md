@@ -5,7 +5,7 @@ Code necessary to reproduce the analyses from the paper
 "Conservation assessment of human splice site annotation based on a 470-genome alignment"
 by Ilia Minkin and Steven L. Salzberg ([biorxiv link](https://www.biorxiv.org/content/10.1101/2023.12.01.569581v2)).
 
-The documentation is still in progress, here is a brief description of the resulting data files:
+The documentation is still in progress. Here is a brief description of the resulting data files:
 
 * data/processed/splice_sites.csv.gz: the input file for the regression models; summarizes all
  unique splice from all the datasets.
@@ -34,7 +34,7 @@ The documentation is still in progress, here is a brief description of the resul
 Intermediate files and directories, absent in the repository and filled by the pipeline: 
 
 * data/interim/{gencode,refseq,chess,mane,random}: directories containing split GTF annotations
-  into introns and exons, plus result of the querying MAF alignment.
+  into introns and exons, plus the result of the querying MAF alignment.
 
 * data/interim/clinvar: directory containing processed ClinVar data.
 
@@ -54,10 +54,10 @@ Intermediate files and directories, absent in the repository and filled by the p
    2. The GTF line corresponding to the exon in the original annotation</li>
    3. The sequence of the human exon</li>
    4. The alignment string indicating matching basepairs</li>
-   5. The sequence of the target genome where the exon mapped</li>
-   6. Alignment score, chromosome, strand, start and end coordinates in the target genome, separated by whitespaces</li>
+   5. The sequence of the target genome where the exon is mapped</li>
+   6. Alignment score, chromosome, strand, start, and end coordinates in the target genome, separated by whitespaces</li>
   
-  Note that the alignment contains extra 30 basepairs both upstream and downstream of the human exon as
+  Note that the alignment contains extra 30 base pairs, both upstream and downstream of the human exon, as
   these alignments are required by the model. For convenience and peer review, the alignments are archived at
   the FTP: ftp://ftp.ccb.jhu.edu/pub/iminkin2/splice-sites-pub/alignment_results/.
 
@@ -67,7 +67,7 @@ Intermediate files and directories, absent in the repository and filled by the p
 Raw data files:
 
 * genomes.txt: a list of 405 genomes we used for the analysis; the list is a subset of all 470 genomes
-  used in the original UCSC alignment. This file is only included for the reference; this list is also
+  used in the original UCSC alignment. This file is only included for reference; this list is also
   included in the Makefile (variable "all_genomes")
 
 * data/raw/annotation: the directory containing the annotations GTF files.
@@ -96,7 +96,7 @@ Some source files:
  and introns/transcripts. Downloads the human genome, gene annotations, the
  alignment, the sequences involved in it, gnomAD data, ClinVar data, GTEx 
  data and other necessary prerequisites. Then it patches the alignment using
- our original method described in the paper, generates a CSV table containing
+ our original method, described in the paper, generates a CSV table containing
  the information about all the splice sites, trains, and runs the classification
  model, and produces an annotated table of splice sites with their support status,
  a CSV table with information about introns (conservation of splice site support, expression 
@@ -116,7 +116,7 @@ Some source files:
 * src/data/models/model.py: the python script generating the model_out.csv and containing the
  splice site classification model.
 
-* src/data/model/model_0.py: the python script generating the the model_out_0.csv and containing
+* src/data/model/model_0.py: the python script generating the model_out_0.csv and containing
  the splice site classification model that uses conservation of the GT/AG nucleotides only.
 
 * src/features/annotate_introns.py: the python script used to generate files introns.csv and
@@ -133,9 +133,9 @@ Some source files:
 Description of the fields of the table data/processed/model_out(0).csv
 ======================================================================
 
-* dataset: the name of the dataset from where the splice site comes
-* transcript_id: the id of the transcript that that the splice site belongs to;
- if a site shared by  multiple transcripts, it will appear in the table only
+* dataset: the name of the dataset from which the splice site comes
+* transcript_id: the id of the transcript that the splice site belongs to;
+ if a site is shared by  multiple transcripts, it will appear in the table only
  once
 * index: the number of the intron that the site belongs to, introns ordered
  by their starting coordinate on the + strand
@@ -144,22 +144,38 @@ Description of the fields of the table data/processed/model_out(0).csv
 * inMANE: 1 if the site appears in a MANE transcript, 0 otherwise
 * chr: chromosome of the site location
 * strand: strand of the site location
-* pos: position of the site, 1-based
+* pos: position of the site, 1-based. This position denotes the position of the first
+  of the canonical dinucleotides of the splice site on the positive strand. For example,
+  if the donor splice GT is located on the positive strand, then the *pos* will correspond
+  to the position of G. For an acceptor splice site on the positive strand AG, *pos* will point at A.
+  For a donor site GT on the negative strand, it will point at the position of the G
+  (which is actually C in the reference sequence since it is reverse-complemented),
+  and for the acceptor site AG on the negative strand, it will point at A (which is actually T on the reference sequence)
+  Below are examples, bold characters are the ones *pos* is pointing at.
+  Canonical dinucleotides on the positive strand:
+
+  **G**T ... **A**G        
+
+  Canonical dinucleotides on the negative strand (positive strand first row, negative strand is the second):
+
+  A**C** ... C**T**  
+  T**G** ... G**A**
+  
 * cons_GTAG: the number of species in which the canonical dinucleotides GT/AG
  are conserved in 470-species whole-genome alignment
 * cons_X: the number of species in which the position with the shift X is
  conserved in 470-species whole-genome alignment. The shift is defined as 
- follows: shifts +0 and +1 correspond to the canonical dinucleotides GT/AT, e.g.
- for donor sites +0 is G and +1 is T. Positive shifts correpond to positions
- downstream of the splice sites, and negative shifts to downsteram positions.
+ follows: shifts +0 and +1 correspond to the canonical dinucleotides GT/AG, e.g.
+ for donor sites, +0 is G and +1 is T. Positive shifts correspond to positions
+ downstream of the splice sites, and negative shifts to downstream positions.
 * snp_X: the number of homozygous samples that an SNP from gnomAD v4.0.0
- database contains located at position with the shift X relative to the site.
+ database located at position with the shift X relative to the site.
  Shifts are defined analogously to the previous category. This value is 0 if
- there are no SNPs at this position or it has 0 homozygous samples
+ there are no SNPs at this position, or it has 0 homozygous samples
 * reuse: the number of isoforms of a gene that share this particular site
-* well_supported: 0 or 1 depending on whether the site is deemed well_supported by
+* well_supported: 0 or 1, depending on whether the site is deemed well_supported by
  the model (1 is conserved)
-* prob: probabibility of the site being well_supported, as calculated by the
+* prob: probability of the site being well_supported, as calculated by the
  model
 
 Description of the fields of the table data/processed/introns.csv
@@ -184,7 +200,7 @@ Description of the fields of the table data/processed/introns.csv
 
 Description of the fields of the table data/processed/transcripts.csv
 =====================================================================
-* dataset: the name of the dataset from where the splice site comes
+* dataset: the name of the dataset from which the splice site comes
 * transcript_id: the id of the transcript
 * gene_type: either "protein_coding" or "lncRNA" depending on the source gene
 * inMANE: 1 if the whole transcript appears in a MANE transcript, 0 otherwise
@@ -193,7 +209,7 @@ Description of the fields of the table data/processed/transcripts.csv
 * start, end: starting and ending position of the transcript (1-based)
 * total_sites: number of splice sites in the transcript
 * mane_sites: number of splice sites that also appear in MANE
-* well_supported_non_mane_sites: numbe of splice site not appearing in MANE, but
+* well_supported_non_mane_sites: number of splice sites not appearing in MANE, but
  that are well-supported
 * well_supported: 1 if each splice site of the transcript is either well-supported
  or appears in MANE, 0 if at least one site is less-supported (and does not appear
